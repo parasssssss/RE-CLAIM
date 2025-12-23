@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReClaim – Update Report</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="javascript/update-report.js" defer></script>
+
+  <!-- Fonts -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    .font-serif {
+      font-family: 'Playfair Display', serif;
+    }
+
+    .btn {
+      transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .input-focus:focus {
+      outline: none;
+      border-color: #000;
+      box-shadow: 0 0 0 1px black;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50">
+
+  <!-- Page Wrapper -->
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="font-serif text-4xl font-bold text-gray-900">
+        Update Report
+      </h1>
+      <p class="text-gray-600 mt-2">
+        Modify the details of your reported item
+      </p>
+    </div>
+
+    <!-- Main Card -->
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+
+      <!-- Image Section (same as view) -->
+      <div class="relative h-80 bg-gray-100">
+        <img
+          id="itemImage"
+          src=""
+          alt="Reported Item"
+          class="w-full h-full object-cover hidden"
+        />
+
+        <!-- Status Badge -->
+        <div class="absolute top-4 right-4">
+          <span
+            id="itemStatus"
+            class="bg-white/90 backdrop-blur-sm text-gray-900 text-sm font-semibold px-4 py-1.5 rounded-full border border-gray-200">
+            —
+          </span>
+        </div>
+      </div>
+
+      <!-- FORM CONTENT (replaces static content only) -->
+      <div class="p-8">
+
+        <form id="updateForm" class="space-y-8">
+
+          <!-- Item Type -->
+          <div>
+            <label class="block text-sm text-gray-500 mb-1">Item Type</label>
+            <select
+              id="itemType"
+              class="input-focus w-full px-4 py-3 rounded-xl border border-gray-300">
+              <option value="">Select item type</option>
+              <option value="electronics">Electronics</option>
+              <option value="jewelry">Jewelry</option>
+              <option value="clothing">Clothing</option>
+              <option value="bag">Bag / Luggage</option>
+              <option value="wallet">Wallet / Purse</option>
+              <option value="keys">Keys</option>
+              <option value="documents">Documents</option>
+              <option value="accessories">Accessories</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <!-- Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+            <div>
+              <label class="block text-sm text-gray-500 mb-1">Color</label>
+              <input
+                id="color"
+                type="text"
+                class="input-focus w-full px-4 py-3 rounded-xl border border-gray-300"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm text-gray-500 mb-1">Brand</label>
+              <input
+                id="brand"
+                type="text"
+                class="input-focus w-full px-4 py-3 rounded-xl border border-gray-300"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm text-gray-500 mb-1">Location</label>
+              <input
+                id="lostAt"
+                type="text"
+                class="input-focus w-full px-4 py-3 rounded-xl border border-gray-300"
+              />
+            </div>
+
+          </div>
+
+          <!-- Description -->
+          <div>
+            <label class="block text-sm text-gray-500 mb-2">Description</label>
+            <textarea
+              id="description"
+              rows="4"
+              class="input-focus w-full px-4 py-3 rounded-xl border border-gray-300 resize-none"></textarea>
+          </div>
+
+          <!-- Action Buttons (same placement + style) -->
+          <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-100">
+
+            <button
+              type="button"
+              id="backBtn"
+              class="btn flex-1 px-6 py-3 text-sm font-medium bg-gray-900 text-white rounded-xl hover:bg-gray-800">
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              class="btn flex-1 px-6 py-3 text-sm font-medium border-2 border-gray-900 text-gray-900 rounded-xl hover:bg-gray-900 hover:text-white">
+              Save Changes
+            </button>
+
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

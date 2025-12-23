@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReClaim - Smart Lost & Found Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="javascript/landing_redirect.js" type="module" defer></script>
+    <script src="javascript/landing.js" type="module" defer></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .font-serif {
+            font-family: 'Playfair Display', serif;
+        }
+        .text-gradient {
+            background: linear-gradient(135deg, #d4af37 0%, #f4e4b3 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .feature-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .feature-card:hover {
+            transform: translateY(-8px);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease;
+        }
+        .scroll-reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .stat-number {
+            font-size: 3.5rem;
+            line-height: 1;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+        .mobile-menu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .mobile-menu.active {
+            max-height: 400px;
+        }
+        
+        /* Hero video styles */
+        .hero-video-container {
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+        }
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 100%);
+            z-index: 1;
+        }
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        /* Navbar scroll effect */
+        .navbar-transparent {
+            background: transparent;
+            backdrop-filter: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .navbar-solid {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        /* Pricing card hover effect */
+        .pricing-card {
+            transition: all 0.3s ease;
+        }
+        .pricing-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+
+/* Marquee animation - Fixed */
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+@keyframes marquee2 {
+    0% {
+        transform: translateX(100%);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* Marquee container */
+.marquee-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* Force the marquee items to take full width */
+.marquee-content {
+    display: flex;
+    width: max-content;
+    animation: marquee 30s linear infinite;
+}
+
+/* Duplicate set positioned right next to the first one */
+.marquee-content-duplicate {
+    display: flex;
+    width: max-content;
+    animation: marquee2 30s linear infinite;
+    position: absolute;
+    top: 0;
+    left: 100%;
+}
+
+/* Ensure no gaps between items */
+.marquee-item {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+/* Marquee animation - Fixed with no gap */
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.animate-marquee {
+    animation: marquee 30s linear infinite;
+    display: flex;
+    width: fit-content;
+    min-width: 200%;
+}
+
+/* Optional: Pause animation on hover */
+.animate-marquee:hover {
+    animation-play-state: paused;
+}
+
+/* Force hamburger icon color based on navbar class */
+.navbar-solid button.md\:hidden svg {
+    color: #1a1a1a !important;
+}
+
+.navbar-transparent button.md\:hidden svg {
+    color: white !important;
+}
+
+/* Ensure mobile menu is always visible with proper colors */
+#mobileMenu a,
+#mobileMenu button {
+    color: #374151 !important; /* gray-700 */
+}
+
+#mobileMenu button.bg-gray-900,
+#mobileMenu button.bg-gray-800 {
+    color: white !important;
+}
+
+/* Mobile menu background */
+#mobileMenu > div {
+    background: white !important;
+}
+
+    </style>
+</head>
+<body class="bg-white text-gray-900">
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed w-full navbar-transparent z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <img src="images/logo.png" alt="ReClaim Logo" class="w-12 h-10" >
+                    
+                </div>
+                <div class="hidden md:flex space-x-8 items-center">
+                    <a href="#features" class="text-sm font-medium text-white hover:text-gray-200 transition">Features</a>
+                    <a href="#solutions" class="text-sm font-medium text-white hover:text-gray-200 transition">Solutions</a>
+                    <a href="#pricing" class="text-sm font-medium text-white hover:text-gray-200 transition">Pricing</a>
+                    <a href="#contact" class="text-sm font-medium text-white hover:text-gray-200 transition">Contact</a>
+                    <button id="Signinbtn" class="px-6 py-2 bg-white text-gray-900 text-sm font-medium hover:bg-gray-100 transition rounded">Sign In</button>
+                    <button id="Signupbtn" class="px-6 py-2 bg-white text-gray-900 text-sm font-medium hover:bg-gray-100 transition rounded">Sign Up</button>
+                </div>
+                <button class="md:hidden text-white" onclick="toggleMenu()">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+            <!-- Mobile Menu -->
+            <div id="mobileMenu" class="mobile-menu md:hidden">
+    <div class="flex flex-col space-y-4 py-4 bg-white rounded-lg mt-2 p-4 shadow-lg">
+        <a href="#features" class="text-sm font-medium text-gray-700 hover:text-gray-900 transition">Features</a>
+        <a href="#solutions" class="text-sm font-medium text-gray-700 hover:text-gray-900 transition">Solutions</a>
+        <a href="#pricing" class="text-sm font-medium text-gray-700 hover:text-gray-900 transition">Pricing</a>
+        <a href="#contact" class="text-sm font-medium text-gray-700 hover:text-gray-900 transition">Contact</a>
+        <button id="Signinbtnmob" class="px-6 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition rounded">Sign In</button>
+        <!-- Change buttons to have proper contrast -->
+        <button id="Signupbtnmob" class="px-6 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition rounded">Sign Up</button>
+  
+    </div>
+</div>
+        </div>
+    </nav>
+
+    <!-- Hero Section with Video Background -->
+    <section class="hero-video-container pt-32 pb-20 px-6 h-screen min-h-[800px]">
+        <!-- Video Background -->
+        <video class="hero-video" autoplay muted loop playsinline>
+            <source src="/frontend/images/Hero1.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="hero-overlay"></div>
+        
+        <div class="max-w-7xl mx-auto h-full flex items-center">
+            <div class="hero-content text-center w-full">
+                <div class="scroll-reveal">
+                    <h1 class="font-serif text-5xl md:text-7xl font-bold leading-tight mb-6 text-white">
+                        Never Lose What Matters
+                    </h1>
+                    <p class="text-2xl text-gray-200 mb-8 leading-relaxed max-w-3xl mx-auto">
+                        A sophisticated SaaS platform designed for premium establishments. Seamlessly manage, match, and reunite items with their rightful owners.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button class="px-10 py-4 border-2 border-white text-white font-medium rounded hover:bg-white hover:text-gray-900 transition text-lg">
+                            Watch Demo
+                        </button>
+                    </div>
+                    <div class="mt-16 flex justify-center space-x-12">
+                        <div class="text-center">
+                            <div class="text-4xl font-bold text-gradient">500+</div>
+                            <div class="text-sm text-gray-300">Businesses Trust Us</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-4xl font-bold text-gradient">99.8%</div>
+                            <div class="text-sm text-gray-300">Match Accuracy</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-4xl font-bold text-gradient">24/7</div>
+                            <div class="text-sm text-gray-300">Support Available</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trusted By Section -->
+<!-- Trusted By Section -->
+<section class="py-16 bg-gray-50 overflow-hidden">
+    <div class="max-w-full mx-auto px-0">
+        <p class="text-center text-sm font-medium text-gray-500 mb-8 tracking-widest uppercase">Designed For Premium Establishments Worldwide</p>
+        
+        <!-- Marquee container - Full width with no gap -->
+        <div class="relative w-full overflow-hidden">
+            <!-- Main marquee container that will animate -->
+            <div class="flex animate-marquee whitespace-nowrap py-4">
+                <!-- Original items -->
+                <div class="inline-block mx-12 text-4xl font-serif text-gradient">Luxury Hotels</div>
+                <div class="inline-block mx-12 text-4xl font-serif text-gradient">Airports</div>
+                <div class="inline-block mx-12 text-4xl font-serif text-gradient">Malls</div>
+                <div class="inline-block mx-12 text-4xl font-serif text-gradient">Universities</div>
+                <div class="inline-block mx-12 text-4xl font-serif text-gradient">Stadiums</div>
+                <!-- Duplicate items - NO GAP -->
+                <div class="inline-block mx-12 text-4xl font-serif text-gradient">Luxury Hotels</div>
+                <div class="inline-block mx-12 text-4xl font-serif text-gradient">Airports</div>
+                <div class="inline-block mx-12 text-4xl font-serif text-gradient">Malls</div>
+                <div class="inline-block mx-12 text-4xl font-serif text-gradient">Universities</div>
+                <div class="inline-block mx-12 text-4xl font-serif text-gradient">Stadiums</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-24 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16 scroll-reveal">
+                <h2 class="font-serif text-4xl md:text-5xl font-bold mb-4">Crafted for Excellence</h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">Every feature thoughtfully designed to deliver an unparalleled lost and found management experience</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Feature cards remain the same as before -->
+                <div class="feature-card scroll-reveal bg-white p-8 rounded-lg border border-gray-200 hover:border-gray-900 hover:shadow-xl">
+                    <div class="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-serif text-2xl font-semibold mb-3">Intelligent Matching</h3>
+                    <p class="text-gray-600 leading-relaxed">Advanced algorithms automatically match found items with lost item reports, reducing manual effort and increasing accuracy.</p>
+                </div>
+                <div class="feature-card scroll-reveal bg-white p-8 rounded-lg border border-gray-200 hover:border-gray-900 hover:shadow-xl">
+                    <div class="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-serif text-2xl font-semibold mb-3">Instant Notifications</h3>
+                    <p class="text-gray-600 leading-relaxed">Real-time alerts ensure item owners are notified immediately when their belongings are found and ready for collection.</p>
+                </div>
+                <div class="feature-card scroll-reveal bg-white p-8 rounded-lg border border-gray-200 hover:border-gray-900 hover:shadow-xl">
+                    <div class="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-serif text-2xl font-semibold mb-3">Powerful Analytics</h3>
+                    <p class="text-gray-600 leading-relaxed">Comprehensive dashboards provide insights into trends, patterns, and operational efficiency for data-driven decisions.</p>
+                </div>
+                
+            
+        </div>
+    </section>
+
+    <!-- Solutions Section -->
+    <section id="solutions" class="py-24 bg-gray-50 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16 scroll-reveal">
+                <h2 class="font-serif text-4xl md:text-5xl font-bold mb-4">Tailored Solutions</h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">Designed to meet the unique needs of distinguished establishments across industries</p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Solutions cards remain the same as before -->
+                <div class="scroll-reveal bg-white p-10 rounded-lg shadow-lg hover:shadow-2xl transition">
+                    <div class="text-4xl mb-4"></div>
+                    <h3 class="font-serif text-2xl font-semibold mb-3">Luxury Hospitality</h3>
+                    <p class="text-gray-600 mb-4">Perfect for hotels, resorts, and boutique properties where guest satisfaction is paramount.</p>
+                    <ul class="space-y-2 text-gray-600">
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-gray-900 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            Guest-facing mobile interface
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-gray-900 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            Multi-location management
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-gray-900 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            VIP item priority handling
+                        </li>
+                    </ul>
+                </div>
+                <div class="scroll-reveal bg-white p-10 rounded-lg shadow-lg hover:shadow-2xl transition">
+                    <div class="text-4xl mb-4"></div>
+                    <h3 class="font-serif text-2xl font-semibold mb-3">Aviation & Transit</h3>
+                    <p class="text-gray-600 mb-4">Streamlined solutions for airports, train stations, and transportation hubs with high footfall.</p>
+                    <ul class="space-y-2 text-gray-600">
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-gray-900 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            High-volume item processing
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-gray-900 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            Rapid item identification
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-gray-900 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            International shipping integration
+                        </li>
+                    </ul>
+                </div>
+                <div class="scroll-reveal bg-white p-10 rounded-lg shadow-lg hover:shadow-2xl transition">
+                    <div class="text-4xl mb-4"></div>
+                    <h3 class="font-serif text-2xl font-semibold mb-3">Corporate & Commercial</h3>
+                    <p class="text-gray-600 mb-4">Ideal for office buildings, malls, and commercial spaces managing valuable belongings.</p>
+                    <ul class="space-y-2 text-gray-600">
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-gray-900 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            Employee self-service portal
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-gray-900 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            Tenant-specific dashboards
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-gray-900 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            Access control integration
+                        </li>
+                    </ul>
+                </div>
+                <div class="scroll-reveal bg-white p-10 rounded-lg shadow-lg hover:shadow-2xl transition">
+                    <div class="text-4xl mb-4"></div>
+                    <h3 class="font-serif text-2xl font-semibold mb-3">Education & Recreation</h3>
+                    <p class="text-gray-600 mb-4">Comprehensive management for universities, gyms, stadiums, and recreational facilities.</p>
+                    <ul class="space-y-2 text-gray-600">
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-gray-900 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            Student ID verification
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-gray-900 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            Campus-wide coordination
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-gray-900 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            Peak season handling
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- New Pricing Section -->
+    <section id="pricing" class="py-24 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16 scroll-reveal">
+                <h2 class="font-serif text-4xl md:text-5xl font-bold mb-4">Simple, Transparent Pricing</h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">Get full access to all features with our enterprise plan</p>
+            </div>
+            
+            <div class="max-w-md mx-auto scroll-reveal">
+                <div class="pricing-card bg-white p-10 rounded-lg shadow-xl border-2 border-gray-900">
+                    <div class="text-center mb-8">
+                        <h3 class="font-serif text-3xl font-semibold mb-2">Enterprise Plan</h3>
+                        <p class="text-gray-600">Complete solution for premium establishments</p>
+                    </div>
+                    
+                    <div class="text-center mb-8">
+                        <div class="flex justify-center items-baseline">
+                            <span class="text-6xl font-bold text-gray-900">₹1,499</span>
+                            <span class="text-gray-600 ml-2">/month</span>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">Billed annually at ₹17,988</p>
+                    </div>
+                    
+                    <div class="mb-10">
+                        <h4 class="font-semibold text-lg mb-4 text-center">Everything included:</h4>
+                        <ul class="space-y-3 text-gray-600">
+                            <li class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                Unlimited lost & found item entries
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                AI-powered intelligent matching
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                Unlimited staff accounts
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                Advanced analytics dashboard
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                24/7 priority support
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                Custom branding & white-label
+                            </li>
+                          
+                        </ul>
+                    </div>
+                    
+                    <button class="w-full btn-primary py-4 text-white font-medium rounded text-lg">
+                        Get Started
+                    </button>
+                    
+                    <p class="text-center text-sm text-gray-500 mt-4">No credit card required • Cancel anytime</p>
+                </div>
+                
+                <div class="mt-8 text-center">
+                    <p class="text-gray-600">Need a custom plan for multiple locations?</p>
+                    <a href="#contact" class="text-gray-900 font-semibold hover:text-gray-700 transition">Contact our sales team →</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-24 bg-gray-900 text-white px-6">
+        <div class="max-w-4xl mx-auto text-center scroll-reveal">
+            <h2 class="font-serif text-4xl md:text-5xl font-bold mb-6">Ready to Transform Your Lost & Found?</h2>
+            <p class="text-xl text-gray-300 mb-10 leading-relaxed">Join hundreds of premium establishments worldwide.</p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact" class="bg-gray-900 text-white py-16 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid md:grid-cols-4 gap-12 mb-12">
+                <div class="md:col-span-1">
+                    <div class="flex items-center space-x-2 mb-4">
+                         <img src="images/logo.png" alt="ReClaim Logo" class="w-12 h-10 ml-8" >
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Product</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#features" class="hover:text-white transition">Features</a></li>
+                        <li><a href="#solutions" class="hover:text-white transition">Solutions</a></li>
+                        <li><a href="#pricing" class="hover:text-white transition">Pricing</a></li>
+                        <li><a href="#" class="hover:text-white transition">Security</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Company</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition">About Us</a></li>
+                        <li><a href="#" class="hover:text-white transition">Careers</a></li>
+                        <li><a href="#" class="hover:text-white transition">Press</a></li>
+                        <li><a href="#" class="hover:text-white transition">Partners</a></li>
+                        <li><a href="#contact" class="hover:text-white transition">Contact</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Resources</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition">Documentation</a></li>
+                        <li><a href="#" class="hover:text-white transition">API Reference</a></li>
+                        <li><a href="#" class="hover:text-white transition">Help Center</a></li>
+                        <li><a href="#" class="hover:text-white transition">Case Studies</a></li>
+                        <li><a href="#" class="hover:text-white transition">Blog</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <p class="text-gray-400 text-sm mb-4 md:mb-0">&copy; 2024 ReClaim. All rights reserved.</p>
+                    <div class="flex space-x-6">
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-2 16h-2v-6h2v6zm-1-6.891c-.607 0-1.1-.496-1.1-1.109 0-.612.492-1.109 1.1-1.109s1.1.497 1.1 1.109c0 .613-.493 1.109-1.1 1.109zm8 6.891h-1.998v-2.861c0-1.881-2.002-1.722-2.002 0v2.861h-2v-6h2v1.093c.872-1.616 4-1.736 4 1.548v3.359z"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    
+</body>
+</html>

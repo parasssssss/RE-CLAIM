@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reclaim - Register</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="javascript/register.js" type="module" defer></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .font-serif {
+            font-family: 'Playfair Display', serif;
+        }
+
+        .input-focus:focus {
+            border-color: #1a1a1a;
+            box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.1);
+        }
+
+        .btn-elegant {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-elegant:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <div class="min-h-screen flex">
+        <!-- Left side - Registration Form -->
+        <div class="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+            <div class="max-w-md w-full space-y-8">
+                <!-- Branding Logo -->
+                <div class="text-center">
+                    <div class="flex items-center justify-center space-x-2 mb-2">
+                        <img src="images/logo.png" alt="ReClaim Logo" class="w-12 h-10" >
+                        
+                    </div>
+                    <h2 class="mt-6 text-3xl font-serif font-bold text-gray-900">
+                        Create Your Account
+                    </h2>
+                    <p class="mt-2 text-sm text-gray-600">
+                        Join hundreds of premium establishments
+                    </p>
+                </div>
+
+                <!-- Registration Form -->
+                <div class="mt-8 space-y-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="businessId" class="block text-sm font-medium text-gray-700 mb-2">
+                                Business ID
+                            </label>
+                            <input
+                                id="businessId"
+                                class="input-focus appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:z-10 transition"
+                                type="text" 
+                                placeholder="Enter your business ID" />
+                        </div>
+
+                        <div>
+                            <label for="firstName" class="block text-sm font-medium text-gray-700 mb-2">
+                                First Name
+                            </label>
+                            <input
+                                id="firstName"
+                                class="input-focus appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:z-10 transition"
+                                type="text" 
+                                placeholder="Enter your first name" />
+                        </div>
+                        
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                                Email Address
+                            </label>
+                            <input
+                                id="email"
+                                class="input-focus appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:z-10 transition"
+                                type="email" 
+                                placeholder="you@example.com" />
+                        </div>
+                        
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                                Password
+                            </label>
+                            <input
+                                id="password"
+                                class="input-focus appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:z-10 transition"
+                                type="password" 
+                                placeholder="Create a strong password" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <button
+                            id="registerBtn"
+                            class="btn-elegant group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900">
+                            <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                                <svg class="h-5 w-5 text-gray-300 group-hover:text-gray-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                </svg>
+                            </span>
+                            Create Account
+                        </button>
+                    </div>
+
+                    <!-- Login link -->
+                    <div class="text-center">
+                        <p class="text-sm text-gray-600">
+                            Already have an account?
+                            <a href="login.html" class="font-semibold text-gray-900 hover:text-gray-700 transition border-b-2 border-gray-900">
+                                Sign in
+                            </a>
+                        </p>
+                    </div>
+
+                    <!-- Terms -->
+                    <p class="mt-4 text-xs text-center text-gray-500 leading-relaxed">
+                        By registering, you agree to ReClim's
+                        <a href="#" class="text-gray-700 hover:text-gray-900 border-b border-gray-400 border-dotted transition">Terms of Service</a> and
+                        <a href="#" class="text-gray-700 hover:text-gray-900 border-b border-gray-400 border-dotted transition">Privacy Policy</a>.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right side - Image & Branding -->
+        <div class="hidden lg:flex lg:flex-1 relative overflow-hidden">
+            <!-- Background Image -->
+            <div class="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+                style="background-image: url('images/27230.jpg');"></div>
+            
+            <!-- Dark Overlay -->
+            <div class="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/50"></div>
+            
+            <!-- Content -->
+            <div class="relative z-10 w-full h-full flex flex-col items-center justify-center text-white p-12">
+                <div class="max-w-xl">
+                    <h1 class="font-serif text-5xl font-bold mb-6 text-center leading-tight">
+                        Start Your Journey
+                    </h1>
+                    <p class="text-lg text-gray-100 text-center leading-relaxed mb-12">
+                        Transform your lost and found operations with enterprise-grade technology.
+                    </p>
+                    
+                    <!-- Features List -->
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+.font-serif {
+    font-family: 'Playfair Display', serif;
+}
+
+.text-gradient {
+    background: linear-gradient(135deg, #d4af37 0%, #f4e4b3 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.status-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+}
+
+.status-pending { background-color: #fef3c7; color: #92400e; }
+.status-matched { background-color: #d1fae5; color: #065f46; }
+.status-claimed { background-color: #dbeafe; color: #1e40af; }
+.status-review { background-color: #fef3c7; color: #92400e; }
+.status-approved { background-color: #d1fae5; color: #065f46; }
+
+/* Active sidebar link */
+.sidebar-active {
+    background-color: #111827;
+    color: white;
+}
+
+.sidebar-active .text-gray-400 {
+    color: #d1d5db;
+}
+
+/* Sidebar styles */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+    display: none;
+}
+
+.sidebar-overlay.active {
+    display: block;
+}
+
+.sidebar-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 20rem;
+    background-color: white;
+    z-index: 50;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 4px 0 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-container.active {
+    transform: translateX(0);
+}
+
+/* Ensure content doesn't hide behind sidebar on mobile */
+@media (max-width: 1024px) {
+    body {
+        overflow-x: hidden;
+    }
+}
