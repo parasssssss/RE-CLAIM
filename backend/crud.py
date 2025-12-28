@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
 import models
-from models import Item, User, UserProfile
+from models import Item, Match, User, UserProfile
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -86,3 +86,30 @@ def create_item(
     db.commit()
     db.refresh(db_item)
     return db_item
+
+
+
+
+def get_match_by_items(db: Session, lost_item_id: int, found_item_id: int):
+    """
+    Check if a match between lost and found item already exists.
+    """
+    return db.query(Match).filter(
+        Match.lost_item_id == lost_item_id,
+        Match.found_item_id == found_item_id
+    ).first()
+
+
+def create_match(db: Session, lost_item_id: int, found_item_id: int, similarity_score: float):
+    """
+    Create a new match record.
+    """
+    new_match = Match(
+        lost_item_id=lost_item_id,
+        found_item_id=found_item_id,
+        similarity_score=similarity_score
+    )
+    db.add(new_match)
+    db.commit()
+    db.refresh(new_match)
+    return new_match

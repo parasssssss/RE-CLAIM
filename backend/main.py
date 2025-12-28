@@ -1,18 +1,26 @@
 import shutil
 from typing import List
+import uuid
+from argon2 import hash_password
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File,Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from utils.ai_match_utils import run_ai_match_for_new_item
+from utils.ai_match import match_items
 from database import Base, engine, get_db
 from auth import create_access_token,get_current_user
 from datetime import timedelta
 from email_utils import send_reset_email 
 from fastapi import Body
-from auth import decode_access_token
+from auth import decode_access_token,bearer_scheme
 import crud,models,schemas
-import os
+import os,razorpay
+from fastapi.openapi.models import APIKey, APIKeyIn
+from fastapi.openapi.utils import get_openapi
+
+
+
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -31,13 +39,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title="ReClaim API",
+        version="1.0.0",
+        description="Lost & Found AI Matching API",
+        routes=app.routes,  
+    )
+
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+        }
+    }
+
+   
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
 
 
 
 
 #fetch User Details Endpoint
-
-@app.get("/me", response_model=schemas.UserOut)
+@app.get("/me", 
+         response_model=schemas.UserOut,
+         dependencies=[Depends(bearer_scheme)])
 def read_current_user(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -78,7 +110,11 @@ def login_user(user: schemas.UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_access_token({"sub": str(db_user.user_id)})
-    return {"access_token": token, "token_type": "bearer", "user_id": db_user.user_id}
+    return {
+        "access_token": token, 
+        "token_type": "bearer", 
+        "user_id": db_user.user_id,
+        "role_id": db_user.role_id}
 
 
 # Forgot Password Endpoint
@@ -161,9 +197,6 @@ def update_profile(
 
 
 
-# Report Item Endpoint
-
-
 @app.post("/report-item")
 def report_item(
     item_type: str = Form(...),
@@ -204,9 +237,17 @@ def report_item(
         status=status
     )
 
-    return {"message": "Item reported successfully", "item_id": item.item_id}
+    # Run AI matching for this new item
+    matches = run_ai_match_for_new_item(item, db)
 
-
+    return {
+        "message": "Item reported successfully",
+        "item_id": item.item_id,
+        "ai_matches": [
+            {"lost": m.lost_item_id, "found": m.found_item_id, "score": m.similarity_score}
+            for m in matches
+        ]
+    }
 
 # Keep the same for staff,admin as well
 
@@ -295,7 +336,94 @@ def update_item(
     return db_item
 
 
+@app.post("/onboarding/start")
+def start_onboarding(payload: dict, db: Session = Depends(get_db)):
+    token = str(uuid.uuid4())
+
+    reg = models.BusinessRegistration(
+        registration_token=token,
+        business_name=payload["business"]["name"],
+        address=payload["business"]["address"],
+        contact_email=payload["business"]["email"],
+        admin_name=payload["admin"]["name"],
+        admin_email=payload["admin"]["email"],
+        admin_password_hash=crud.get_password_hash(payload["admin"]["password"]),
+        status="PAID"
+    )
+
+    db.add(reg)
+    db.commit()
+
+    return {
+        "registration_token": token
+    }
+
+
+@app.post("/onboarding/complete")
+def complete_onboarding(token: str, db: Session = Depends(get_db)):
+
+    reg = db.query(models.BusinessRegistration).filter_by(
+        registration_token=token
+    ).first()
+
+    if not reg or reg.status != "PAID":
+        raise HTTPException(status_code=400, detail="Invalid or unpaid registration")
+
+    if reg.status == "COMPLETED":
+        raise HTTPException(status_code=400, detail="Onboarding already completed")
+
+    # Get admin role
+    admin_role = db.query(models.Role).filter_by(role_name="admin").first()
+    if not admin_role:
+        raise HTTPException(status_code=500, detail="Admin role not configured")
+
+    # Create Business
+    business = models.Business(
+        business_name=reg.business_name,
+        address=reg.address,
+        contact_email=reg.contact_email
+    )
+    db.add(business)
+    db.flush()  # get business_id without commit
+
+    # Create Admin User (NO re-hashing)
+    admin = models.User(
+        first_name=reg.admin_name,
+        email=reg.admin_email,
+        password_hash=reg.admin_password_hash,
+        business_id=business.business_id,
+        role_id=admin_role.role_id
+    )
+    db.add(admin)
+
+    # Mark completed
+    reg.status = "COMPLETED"
+
+    db.commit()
+
+    return {
+        "message": "Business & Admin created successfully",
+        "business_id": business.business_id
+    }
 
 
 
-
+# Run AI Matching Endpoint
+@app.post("/run-ai-matching/{business_id}")
+def run_ai_matching(business_id: int, db: Session = Depends(get_db)):
+    # Fetch LOST items for this business
+    lost_items = db.query(models.Item).filter(models.Item.business_id == business_id, models.Item.status == "LOST").all()
+    
+    # Fetch FOUND items for this business
+    found_items = db.query(models.Item).filter(models.Item.business_id == business_id, models.Item.status == "FOUND").all()
+    
+    # Run AI matching
+    matches = match_items(lost_items, found_items, threshold=0.65)
+    
+    # Save matches to DB
+    saved_matches = []
+    for m in matches:
+        saved_match = crud.create_match(db, m["lost_item_id"], m["found_item_id"], m["similarity_score"])
+        saved_matches.append(saved_match)
+    
+    return {"total_matches": len(saved_matches), "matches": [{"lost": m.lost_item_id, "found": m.found_item_id, "score": m.similarity_score} for m in saved_matches]}

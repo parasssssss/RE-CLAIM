@@ -50,7 +50,7 @@ class ItemBase(BaseModel):
     brand: Optional[str]
     color: Optional[str]
     description: Optional[str]
-    image_path: str
+    image_path: Optional[str]
     image_mime: Optional[str]
     status: Optional[str] = "LOST"
     ai_match_score: Optional[float]

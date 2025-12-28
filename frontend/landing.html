@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="javascript/landing_redirect.js" type="module" defer></script>
     <script src="javascript/landing.js" type="module" defer></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="javascript/onboarding.js"  defer></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
         
@@ -542,9 +544,11 @@
                         </ul>
                     </div>
                     
-                    <button class="w-full btn-primary py-4 text-white font-medium rounded text-lg">
-                        Get Started
-                    </button>
+                    <button id="getStartedBtn" class="w-full btn-primary py-4 text-white font-medium rounded text-lg">
+    Get Started
+</button>
+
+
                     
                     <p class="text-center text-sm text-gray-500 mt-4">No credit card required • Cancel anytime</p>
                 </div>
@@ -630,6 +634,106 @@
         </div>
     </footer>
 
-    
+    <!-- Onboarding Modal -->
+<div id="onboardingModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative">
+        <!-- Close Button -->
+        <button id="closeModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-900 z-10 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+
+        <!-- Progress Bar -->
+        <div class="h-1 bg-gray-200">
+            <div id="progressBar" class="h-full bg-gray-900 transition-all duration-300" style="width: 50%"></div>
+        </div>
+
+        <!-- Modal Content -->
+        <div class="p-8 sm:p-12">
+            <!-- Step 1: Business Info -->
+            <div id="step1">
+                <div class="mb-8">
+                    <h2 class="font-serif text-3xl font-bold text-gray-900 mb-2">Business Information</h2>
+                    <p class="text-gray-600">Tell us about your establishment</p>
+                </div>
+                
+                <div class="space-y-5">
+                    <div>
+                        <label for="businessName" class="block text-sm font-semibold text-gray-900 mb-2">Business Name</label>
+                        <input id="businessName" type="text" placeholder="e.g., Grand Plaza Hotel" 
+                            class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/20 focus:outline-none transition" />
+                    </div>
+                    
+                    <div>
+                        <label for="businessAddress" class="block text-sm font-semibold text-gray-900 mb-2">Business Address</label>
+                        <input id="businessAddress" type="text" placeholder="Street address, City, State, ZIP" 
+                            class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/20 focus:outline-none transition" />
+                    </div>
+                    
+                    <div>
+                        <label for="businessEmail" class="block text-sm font-semibold text-gray-900 mb-2">Contact Email</label>
+                        <input id="businessEmail" type="email" placeholder="contact@yourbusiness.com" 
+                            class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/20 focus:outline-none transition" />
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+                    <p class="text-sm text-gray-500">Step 1 of 2</p>
+                    <button id="nextToStep2" 
+                        class="px-8 py-3 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transform hover:scale-105 transition shadow-lg">
+                        Continue
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Admin Info -->
+            <div id="step2" class="hidden">
+                <div class="mb-8">
+                    <h2 class="font-serif text-3xl font-bold text-gray-900 mb-2">Admin Account</h2>
+                    <p class="text-gray-600">Create your administrator credentials</p>
+                </div>
+                
+                <div class="space-y-5">
+                    <div>
+                        <label for="adminName" class="block text-sm font-semibold text-gray-900 mb-2">Full Name</label>
+                        <input id="adminName" type="text" placeholder="John Doe" 
+                            class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/20 focus:outline-none transition" />
+                    </div>
+                    
+                    <div>
+                        <label for="adminEmail" class="block text-sm font-semibold text-gray-900 mb-2">Email Address</label>
+                        <input id="adminEmail" type="email" placeholder="admin@yourbusiness.com" 
+                            class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/20 focus:outline-none transition" />
+                    </div>
+                    
+                    <div>
+                        <label for="adminPassword" class="block text-sm font-semibold text-gray-900 mb-2">Password</label>
+                        <input id="adminPassword" type="password" placeholder="Create a strong password" 
+                            class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/20 focus:outline-none transition" />
+                        <p class="text-xs text-gray-500 mt-2">Must be at least 8 characters with a mix of letters and numbers</p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+                    <button id="backToStep1" 
+                        class="px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition">
+                        Back
+                    </button>
+                    <div class="flex items-center space-x-3">
+                        <p class="text-sm text-gray-500">Step 2 of 2</p>
+                        <button id="checkoutBtn" 
+                            class="px-8 py-3 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transform hover:scale-105 transition shadow-lg flex items-center space-x-2">
+                            <span>Complete Setup</span>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

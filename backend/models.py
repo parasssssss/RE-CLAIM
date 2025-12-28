@@ -58,8 +58,8 @@ class Item(Base):
     color = Column(String(50))
     description = Column(Text)
 
-    image_path = Column(Text, nullable=False)
-    image_mime = Column(String(50))
+    image_path = Column(Text, nullable=True)
+    image_mime = Column(String(50), nullable=True)
 
     status = Column(String(30), nullable=False, default="LOST")
     ai_match_score = Column(Float)
@@ -69,3 +69,48 @@ class Item(Base):
     lost_location = Column(String(255), nullable=True)
     user = relationship("User", back_populates="items")
     business = relationship("Business")
+
+
+class BusinessRegistration(Base):
+    __tablename__ = "business_registrations"
+
+    id = Column(Integer, primary_key=True)
+    registration_token = Column(String, unique=True, index=True)
+
+    business_name = Column(String)
+    address = Column(String)
+    contact_email = Column(String)
+
+    admin_name = Column(String)
+    admin_email = Column(String)
+    admin_password_hash = Column(String)
+
+    status = Column(String, default="PENDING")  
+    # PENDING | PAID | COMPLETED | EXPIRED
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    payment_id = Column(Integer, primary_key=True)
+    registration_token = Column(String, index=True)
+    razorpay_order_id = Column(String)
+    razorpay_payment_id = Column(String)
+    amount = Column(Integer)
+    status = Column(String)  # CREATED | PAID | FAILED
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Match(Base):
+    __tablename__ = "matches"
+
+    match_id = Column(Integer, primary_key=True, index=True)
+    lost_item_id = Column(Integer, ForeignKey("items.item_id"))
+    found_item_id = Column(Integer, ForeignKey("items.item_id"))
+    similarity_score = Column(Float)
+    status = Column(String(30), default="PENDING")  # PENDING | ADMIN_REVIEW | RESOLVED | REJECTED
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+

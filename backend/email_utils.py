@@ -1,10 +1,12 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import os
+from dotenv import load_dotenv
 
 def send_reset_email(to_email, reset_link):
     sender_email = "info.reclaimm@gmail.com"
-    sender_password = "bdda ebyi qebg awlg"  
+    sender_password = os.getenv("APP_PASSWORD")  
     
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Password Reset - Reclaim"

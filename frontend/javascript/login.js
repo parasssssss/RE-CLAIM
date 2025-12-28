@@ -16,17 +16,27 @@ document.getElementById("loginBtn").addEventListener("click", async (e) => {
         const result = await res.json();
 
         if (res.ok) {
-            // Save token in localStorage
-            const token = result.access_token;
+    const token = result.access_token;
     console.log("JWT Token:", token);
-            localStorage.setItem("token", result.access_token);
-            alert("Login successful! User ID: " + result.user_id);
+    localStorage.setItem("token", token);
 
-            // Redirect to dashboard page
-            window.location.href = "dashboard_normie.html";
-        } else {
-            alert("Error: " + result.detail);
-        }
+    // Ensure roleId is integer
+    const roleId = parseInt(result.role_id, 10);
+    localStorage.setItem("role_id", roleId);
+
+    alert("Login successful! User ID: " + result.user_id);
+
+    // Redirect based on role
+    if (roleId === 2) {
+        window.location.href = "dashboard_admin.html";
+    } else if (roleId === 3) {
+        window.location.href = "dashboard_staff.html";
+    } else {
+        window.location.href = "dashboard_normie.html";
+    }
+}
+    
+
     } catch (err) {
         console.error(err);
         alert("Something went wrong!");
