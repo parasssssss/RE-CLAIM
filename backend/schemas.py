@@ -22,6 +22,7 @@ class UserOut(BaseModel):
     phone: Optional[str] = None
     profile_image: Optional[str] = None
     profile_image_mime: Optional[str] = None
+    role_id: Optional[int]
 
 
 class ProfileBase(BaseModel):
@@ -75,6 +76,7 @@ class ItemResponse(ItemBase):
     created_at: datetime
     updated_at: Optional[datetime]
     lost_location: Optional[str] = None
+    is_active: bool = True
 
 class ItemUpdate(BaseModel):
     item_type: Optional[str] = None
@@ -82,6 +84,25 @@ class ItemUpdate(BaseModel):
     color: Optional[str] = None
     description: Optional[str] = None
     lost_location: Optional[str] = None
+
+
+class ItemInfo(BaseModel):
+    item_id: int
+    item_type: str
+    brand: Optional[str]
+    color: Optional[str]
+    description: Optional[str]
+    image_path: Optional[str]
+    lost_location: Optional[str]
+    created_at: datetime
+
+class MatchResponse(BaseModel):
+    match_id: int
+    similarity_score: float
+    status: str
+    lost: ItemInfo
+    found: ItemInfo
+    created_at: datetime
 
 
 

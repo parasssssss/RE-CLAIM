@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Float, Integer, String, ForeignKey, DateTime,Text,ForeignKey, Date, TIMESTAMP
+from sqlalchemy import Column, Float, Integer, String, ForeignKey, DateTime,Text,ForeignKey, Date, TIMESTAMP,Boolean
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
@@ -67,6 +67,8 @@ class Item(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
     lost_location = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True)  # True = active, False = inactive
+
     user = relationship("User", back_populates="items")
     business = relationship("Business")
 

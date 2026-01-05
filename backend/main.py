@@ -5,6 +5,7 @@ from argon2 import hash_password
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File,Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from numpy import select
 from sqlalchemy.orm import Session
 from utils.ai_match_utils import run_ai_match_for_new_item
 from utils.ai_match import match_items
@@ -18,6 +19,7 @@ import crud,models,schemas
 import os,razorpay
 from fastapi.openapi.models import APIKey, APIKeyIn
 from fastapi.openapi.utils import get_openapi
+from sqlalchemy import or_
 
 
 
@@ -90,6 +92,7 @@ def read_current_user(
         "phone": getattr(profile, "phone", None),
         "profile_image": getattr(profile, "profile_image", None),
         "profile_image_mime": getattr(profile, "profile_image_mime", None),
+        "role_id": current_user.role_id
     }
 
 
@@ -264,26 +267,45 @@ def get_my_items(
     return items
 
 
-#delete Report Endpoint
+
+# Delete Report Endpoint
 @app.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_item(
     item_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
-    item = db.query(models.Item).filter(models.Item.item_id == item_id).first()
+    item = db.query(models.Item).filter(
+        models.Item.item_id == item_id
+    ).first()
 
     if not item:
         raise HTTPException(status_code=404, detail="Item not found.")
 
-
+    # Ownership check
     if item.user_id != current_user.user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this item.")
+        raise HTTPException(status_code=403, detail="Not authorized.")
 
+    # 🔴 CHECK FOR MATCHES
+    matches = db.query(models.Match).filter(
+        (models.Match.lost_item_id == item_id) |
+        (models.Match.found_item_id == item_id)
+    ).all()
+
+    for match in matches:
+        if match.status.upper() in ["APPROVED", "RECLAIMED"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Item cannot be deleted after match is approved or reclaimed."
+            )
+    for match in matches:
+        db.delete(match)
+    # ✅ Safe to delete (no match OR only pending matches)
     db.delete(item)
     db.commit()
 
     return {"message": "Item deleted successfully"}
+
 
 # get single Report Endpoint
 @app.get("/item/{item_id}", response_model=schemas.ItemResponse)
@@ -427,3 +449,193 @@ def run_ai_matching(business_id: int, db: Session = Depends(get_db)):
         saved_matches.append(saved_match)
     
     return {"total_matches": len(saved_matches), "matches": [{"lost": m.lost_item_id, "found": m.found_item_id, "score": m.similarity_score} for m in saved_matches]}
+
+
+@app.get("/matches", response_model=List[schemas.MatchResponse])
+def get_ai_matches(
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    matches_query = db.query(models.Match).join(
+        models.Item, models.Match.found_item_id == models.Item.item_id
+    )
+
+    if current_user.role_id == 4:  # normal user
+        lost_items = db.query(models.Item.item_id).filter(
+            models.Item.user_id == current_user.user_id
+        ).subquery()  # ignore status here
+        matches_query = db.query(models.Match).filter(models.Match.lost_item_id.in_(lost_items))
+
+
+
+    elif current_user.role_id == 3:  # staff
+        # Filter matches where the staff reported the found items
+        matches_query = matches_query.filter(models.Item.user_id == current_user.user_id)
+
+    matches = matches_query.all()
+
+    result = []
+    for match in matches:
+        lost_item = db.query(models.Item).filter(models.Item.item_id == match.lost_item_id).first()
+        found_item = db.query(models.Item).filter(models.Item.item_id == match.found_item_id).first()
+
+        result.append({
+            "match_id": match.match_id,
+            "similarity_score": match.similarity_score,
+            "status": match.status,
+            "lost": lost_item,
+            "found": found_item,
+            "created_at": match.created_at
+        })
+
+    return result
+
+
+# Get Approved Matches (User + Staff)
+@app.get("/approved-matches", response_model=List[schemas.MatchResponse])
+def get_approved_matches(
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Subquery: all item IDs belonging to current user
+    user_item_ids = db.query(models.Item.item_id).filter(
+        models.Item.user_id == current_user.user_id
+    ).subquery()
+
+    # Fetch approved matches involving user's items
+    matches = db.query(models.Match).filter(
+    or_(
+        models.Match.status == "APPROVED",
+        models.Match.status == "RECLAIMED"
+    ),
+    or_(
+        models.Match.lost_item_id.in_(user_item_ids),
+        models.Match.found_item_id.in_(user_item_ids)
+    )
+).order_by(models.Match.created_at.desc()).all()
+
+    result = []
+    for match in matches:
+        lost_item = db.query(models.Item).get(match.lost_item_id)
+        found_item = db.query(models.Item).get(match.found_item_id)
+
+        result.append({
+            "match_id": match.match_id,
+            "similarity_score": match.similarity_score,
+            "status": match.status,
+            "lost": lost_item,
+            "found": found_item,
+            "created_at": match.created_at
+        })
+
+    return result
+
+
+@app.post("/claim-item/{match_id}")
+def claim_item(
+    match_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    # Fetch the match
+    match = db.query(models.Match).filter(models.Match.match_id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    # Fetch the lost item
+    lost_item = db.query(models.Item).filter(models.Item.item_id == match.lost_item_id).first()
+    if not lost_item:
+        raise HTTPException(status_code=404, detail="Lost item not found")
+
+    # Ensure current user owns the lost item
+    if lost_item.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="You are not authorized to claim this item")
+
+    # Fetch the found item
+    found_item = db.query(models.Item).filter(models.Item.item_id == match.found_item_id).first()
+    if not found_item:
+        raise HTTPException(status_code=404, detail="Found item not found")
+
+    # Update match status
+    match.status = "RECLAIMED"
+
+    # Update lost and found item statuses
+    lost_item.status = "RECLAIMED"
+    found_item.status = "RECLAIMED"
+
+    # Mark items as inactive
+    lost_item.is_active = False
+    found_item.is_active = False
+
+    db.commit()
+
+    return {"message": "Item successfully claimed!"}
+
+
+
+@app.post("/admin/approve-match/{match_id}")
+def approve_match(
+    match_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    # Admin check
+    if current_user.role_id != 2:
+        raise HTTPException(status_code=403, detail="Admin access only")
+
+    match = db.query(models.Match).filter(
+        models.Match.match_id == match_id
+    ).first()
+
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    if match.status.lower() != "pending":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot approve a {match.status} match"
+        )
+
+    match.status = "APPROVED"
+    db.commit()
+
+    return {
+        "message": "Match approved successfully",
+        "match_id": match_id,
+        "status": "approved"
+    }
+
+
+
+
+@app.post("/admin/reject-match/{match_id}")
+def reject_match(
+    match_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    # Admin check
+    if current_user.role_id != 2:
+        raise HTTPException(status_code=403, detail="Admin access only")
+
+    match = db.query(models.Match).filter(
+        models.Match.match_id == match_id
+    ).first()
+
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    if match.status.lower() != "pending":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot reject a {match.status} match"
+        )
+
+    match.status = "REJECTED"
+    db.commit()
+
+    return {
+        "message": "Match rejected successfully",
+        "match_id": match_id,
+        "status": "rejected"
+    }
