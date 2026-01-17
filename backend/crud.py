@@ -16,19 +16,22 @@ def get_user_by_id(db: Session, user_id: int):
 def get_password_hash(password: str):
     return pwd_context.hash(password)
 
-def create_user(db: Session, user_data):
+def create_user(db: Session, user_data, business_id: int):
     hashed_password = pwd_context.hash(user_data.password)
+
     db_user = User(
         first_name=user_data.first_name,
         email=user_data.email,
         password_hash=hashed_password,
-        business_id=user_data.business_id,
-        role_id=4  # normal user by default
+        business_id=business_id,   # ✅ resolved in backend
+        role_id=4
     )
+
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
+
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)

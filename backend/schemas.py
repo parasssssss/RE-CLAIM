@@ -7,11 +7,13 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     business_id: int | None = None  # optional for normal users
+    business_code: str
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
-    business_id: int | None = None
+    
+    
 
 class UserOut(BaseModel):
     user_id: int

@@ -100,24 +100,52 @@ def read_current_user(
 # Registration Endpoint
 @app.post("/register", response_model=schemas.UserOut)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_user_by_email(db, user.email)
+
+    business = db.query(models.Business).filter(
+        models.Business.business_code == user.business_code
+    ).first()
+
+    if not business:
+        raise HTTPException(status_code=404, detail="Invalid business code")
+
+    db_user = db.query(models.User).filter(
+        models.User.email == user.email,
+        models.User.business_id == business.business_id
+    ).first()
+
     if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    return crud.create_user(db, user)
+        raise HTTPException(status_code=400, detail="Email already registered in this business")
+
+    return crud.create_user(db, user, business.business_id)
+
+
 
 # Login Endpoint
 @app.post("/login")
 def login_user(user: schemas.UserLogin, db: Session = Depends(get_db)):
-    db_user = crud.get_user_by_email(db, user.email)
+
+    db_user = db.query(models.User).filter(
+        models.User.email == user.email
+    ).first()
+
     if not db_user or not crud.verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_access_token({"sub": str(db_user.user_id)})
+    token = create_access_token({
+        "sub": str(db_user.user_id),
+        "business_id": db_user.business_id,
+        "role_id": db_user.role_id
+    })
+
     return {
-        "access_token": token, 
-        "token_type": "bearer", 
+        "access_token": token,
+        "token_type": "bearer",
         "user_id": db_user.user_id,
-        "role_id": db_user.role_id}
+        "role_id": db_user.role_id,
+        "business_id": db_user.business_id
+    }
+
+
 
 
 # Forgot Password Endpoint
@@ -367,6 +395,7 @@ def start_onboarding(payload: dict, db: Session = Depends(get_db)):
         business_name=payload["business"]["name"],
         address=payload["business"]["address"],
         contact_email=payload["business"]["email"],
+        business_code=payload["business"]["business_code"],  # ✅ new field
         admin_name=payload["admin"]["name"],
         admin_email=payload["admin"]["email"],
         admin_password_hash=crud.get_password_hash(payload["admin"]["password"]),
@@ -379,6 +408,7 @@ def start_onboarding(payload: dict, db: Session = Depends(get_db)):
     return {
         "registration_token": token
     }
+
 
 
 @app.post("/onboarding/complete")
@@ -399,11 +429,12 @@ def complete_onboarding(token: str, db: Session = Depends(get_db)):
     if not admin_role:
         raise HTTPException(status_code=500, detail="Admin role not configured")
 
-    # Create Business
+    # Create Business with business_code
     business = models.Business(
         business_name=reg.business_name,
         address=reg.address,
-        contact_email=reg.contact_email
+        contact_email=reg.contact_email,
+        business_code=reg.business_code  # ✅ new field
     )
     db.add(business)
     db.flush()  # get business_id without commit
@@ -425,8 +456,9 @@ def complete_onboarding(token: str, db: Session = Depends(get_db)):
 
     return {
         "message": "Business & Admin created successfully",
-        "business_id": business.business_id
+        "business_code": business.business_code
     }
+
 
 
 

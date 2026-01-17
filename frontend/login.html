@@ -44,6 +44,39 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
+
+        /* Add to your existing CSS */
+.btn-processing {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.btn-processing .btn-text {
+    opacity: 0;
+}
+
+.btn-processing .spinner {
+    opacity: 1;
+}
+
+.btn-spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.btn-spinner svg {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
     </style>
 </head>
 
@@ -81,15 +114,29 @@
                         </div>
                         
                         <div>
-                            <label for="loginPassword" class="block text-sm font-medium text-gray-700 mb-2">
-                                Password
-                            </label>
+                            <div class="flex items-center justify-between mb-2">
+                                <label for="loginPassword" class="block text-sm font-medium text-gray-700">
+                                    Password
+                                </label>
+                        
+                                <button
+                                    type="button"
+                                    id="toggleLoginPassword"
+                                    class="text-xs text-gray-500 hover:text-gray-900 transition"
+                                >
+                                    👁 Show
+                                </button>
+                            </div>
+                        
                             <input
                                 id="loginPassword"
-                                class="input-focus appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:z-10 transition"
-                                type="password" 
-                                placeholder="Enter your password" />
+                                class="input-focus block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none transition"
+                                type="password"
+                                placeholder="Enter your password"
+                            />
                         </div>
+                        
+                        
                     </div>
 
                     <div class="flex items-center justify-end">
@@ -102,15 +149,26 @@
 
                     <div>
                         <button
-                            id="loginBtn"
-                            class="btn-elegant group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900">
-                            <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-                                <svg class="h-5 w-5 text-gray-300 group-hover:text-gray-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                                </svg>
-                            </span>
-                            Sign In
-                        </button>
+    id="loginBtn"
+    class="btn-elegant group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900">
+    <!-- Icon on left (unchanged) -->
+    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+        <svg class="h-5 w-5 text-gray-300 group-hover:text-gray-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+        </svg>
+    </span>
+    
+    <!-- Button text -->
+    <span class="btn-text transition-opacity">Sign In</span>
+    
+    <!-- Loading spinner (hidden by default) -->
+    <span class="btn-spinner spinner">
+        <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    </span>
+</button>
                     </div>
 
                     <!-- Registration link -->

@@ -11,12 +11,16 @@ class Role(Base):
 
 class Business(Base):
     __tablename__ = "businesses"
-    business_id = Column(Integer, primary_key=True, index=True)
+
+    business_id = Column(Integer, primary_key=True, index=True)   # INTERNAL (FK use only)
+    business_code = Column(String(20), unique=True, index=True, nullable=False)  # PUBLIC
     business_name = Column(String, nullable=False)
     address = Column(String)
     contact_email = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    Business=relationship("Item", back_populates="business")
+
+    items = relationship("Item", back_populates="business")
+
 
 class User(Base):
     __tablename__ = "users"
@@ -70,7 +74,7 @@ class Item(Base):
     is_active = Column(Boolean, default=True)  # True = active, False = inactive
 
     user = relationship("User", back_populates="items")
-    business = relationship("Business")
+    business = relationship("Business", back_populates="items") 
 
 
 class BusinessRegistration(Base):
@@ -82,6 +86,7 @@ class BusinessRegistration(Base):
     business_name = Column(String)
     address = Column(String)
     contact_email = Column(String)
+    business_code = Column(String, unique=True, index=True) 
 
     admin_name = Column(String)
     admin_email = Column(String)
