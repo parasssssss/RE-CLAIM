@@ -6,9 +6,11 @@
     <title>ReClaim - Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="javascript/dashboard.js" type="module" defer></script>
     <script src="javascript/common.js" defer></script>
     <script src="javascript/report-lost.js" type="module" defer></script>
+    <script src="javascript/profile-dropdown.js" type="module" defer></script>
     <style>
         /* Sidebar overlay */
         .sidebar-overlay {
@@ -45,45 +47,274 @@
             transform: translateX(0);
         }
 
-        /* form css */
-
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
         
         body {
             font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
         }
         
         .font-serif {
             font-family: 'Playfair Display', serif;
         }
 
-        .input-focus:focus {
-            border-color: #1a1a1a;
-            box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.1);
+        .form-container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
         }
 
-        .btn-elegant {
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            transition: all 0.3s ease;
+        .form-group {
+            position: relative;
+            margin-bottom: 28px;
         }
 
-        .btn-elegant:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        .form-label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 14px;
+            letter-spacing: -0.01em;
         }
 
-        .form-card {
-            transition: all 0.3s ease;
+        .form-label::after {
+            content: '*';
+            color: #ef4444;
+            margin-left: 4px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 14px;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            background: white;
+            color: #1f2937;
+        }
+
+        .form-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+
+        .form-input::placeholder {
+            color: #9ca3af;
+            font-weight: 400;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 14px;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            background: white;
+            color: #1f2937;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 20px center;
+            background-size: 20px;
+        }
+
+        .form-select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 14px;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            background: white;
+            color: #1f2937;
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-textarea:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            outline: none;
         }
 
         .upload-area {
             border: 2px dashed #d1d5db;
+            border-radius: 14px;
+            padding: 40px;
+            text-align: center;
+            background: #f9fafb;
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         .upload-area:hover {
-            border-color: #1a1a1a;
-            background-color: #f9fafb;
+            border-color: #3b82f6;
+            background-color: #f0f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            transform: scale(1.01);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #9ca3af;
+            margin-bottom: 16px;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            padding: 18px 32px;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .help-text {
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 8px;
+            display: block;
+        }
+
+        .file-preview {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: #f0f9ff;
+            border-radius: 14px;
+            border: 2px solid #3b82f6;
+            margin-top: 12px;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .file-icon {
+            font-size: 24px;
+            color: #3b82f6;
+        }
+
+        .file-details {
+            text-align: left;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 14px;
+        }
+
+        .file-size {
+            color: #6b7280;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .remove-btn {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .remove-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        .form-header {
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        .form-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1f2937;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+
+        .form-subtitle {
+            color: #6b7280;
+            font-size: 16px;
+        }
+
+        .form-section {
+            margin-bottom: 40px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-container {
+                margin: 0 -16px;
+                border-radius: 0;
+                border: none;
+            }
+            
+            .upload-area {
+                padding: 32px 20px;
+            }
+        }
+
+        .input-icon {
+            position: absolute;
+            right: 20px;
+            top: 45px;
+            color: #9ca3af;
+            pointer-events: none;
+        }
+
+        .character-count {
+            text-align: right;
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 4px;
         }
     </style>
 </head>
@@ -236,123 +467,241 @@
     </header>
 
     <!-- Main Content Area -->
-
     <div class="py-8">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <!-- Form Container -->
+        <div class="form-container p-8 md:p-12">
+          <!-- Form Header -->
+          <div class="form-header">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 font-serif">Report Lost Item</h1>
+            <p class="text-base md:text-lg text-gray-600 font-sans">Fill in the details below to report your lost item. All fields are required unless noted.</p>
+          </div>
 
-        <div class="mb-8">
-                <h1 class="font-serif text-4xl font-bold text-gray-900 mb-2">Report Lost Item</h1>
-                <p class="text-gray-600">Report a lost item </p>
+          <form id="reportForm" class="space-y-8">
+            <!-- Item Type Section -->
+            <div class="form-section">
+              <label for="itemType" class="form-label">Item Type</label>
+              <div class="relative">
+                <select id="itemType" class="form-select">
+                  <option value="">Select item type</option>
+                  <option value="electronics">Electronics</option>
+                  <option value="jewelry">Jewelry</option>
+                  <option value="clothing">Clothing</option>
+                  <option value="bag">Bag/Luggage</option>
+                  <option value="wallet">Wallet/Purse</option>
+                  <option value="keys">Keys</option>
+                  <option value="documents">Documents</option>
+                  <option value="accessories">Accessories</option>
+                  <option value="other">Other</option>
+                </select>
+                <i class="fas fa-chevron-down input-icon"></i>
+              </div>
             </div>
 
-        <div class="bg-white shadow-xl rounded-2xl p-8 form-card border border-gray-100 w-70">
+            <!-- Brand & Color Section -->
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="brand" class="form-label">Brand</label>
+                <input 
+                  type="text" 
+                  id="brand" 
+                  placeholder="e.g., Apple, Samsung, Gucci, Nike"
+                  class="form-input">
+                <span class="help-text">Enter the brand name if known</span>
+              </div>
 
-        <form class="space-y-6">
-                    <!-- Item Type -->
-                    <div>
-                        <label for="itemType" class="block text-sm font-semibold text-gray-900 mb-2">
-                            Item Type
-                        </label>
-                        <select id="itemType" class="input-focus block w-full px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none transition appearance-none bg-white">
-                            <option value="">Select item type</option>
-                            <option value="electronics">Electronics</option>
-                            <option value="jewelry">Jewelry</option>
-                            <option value="clothing">Clothing</option>
-                            <option value="bag">Bag/Luggage</option>
-                            <option value="wallet">Wallet/Purse</option>
-                            <option value="keys">Keys</option>
-                            <option value="documents">Documents</option>
-                            <option value="accessories">Accessories</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
+              <div class="form-group">
+                <label for="color" class="form-label">Color</label>
+                <input 
+                  type="text" 
+                  id="color" 
+                  placeholder="e.g., Black, Silver, Red, Blue"
+                  class="form-input">
+                <span class="help-text">Primary color of the item</span>
+              </div>
+            </div>
 
-                    <!-- Brand -->
-                    <div>
-                        <label for="brand" class="block text-sm font-semibold text-gray-900 mb-2">
-                            Brand
-                        </label>
-                        <input 
-                            type="text" 
-                            id="brand" 
-                            placeholder="e.g., Apple, Samsung, Gucci, Nike"
-                            class="input-focus block w-full px-4 py-3 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none transition">
-                    </div>
+            <!-- Description Section -->
+            <div class="form-group">
+              <label for="description" class="form-label">Description</label>
+              <textarea 
+                id="description" 
+                placeholder="Provide a detailed description including any distinctive features, marks, or accessories..."
+                class="form-textarea"></textarea>
+              <div class="character-count">
+                <span id="charCount">0</span>/500 characters
+              </div>
+            </div>
 
-                    <!-- Color -->
-                    <div>
-                        <label for="color" class="block text-sm font-semibold text-gray-900 mb-2">
-                            Color
-                        </label>
-                        <input 
-                            type="text" 
-                            id="color" 
-                            placeholder="e.g., Black, Silver, Red, Blue"
-                            class="input-focus block w-full px-4 py-3 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none transition">
-                    </div>
-
-                    <!-- Description -->
-                    <div>
-                        <label for="description" class="block text-sm font-semibold text-gray-900 mb-2">
-                            Description
-                        </label>
-                        <textarea 
-                            id="description" 
-                            rows="4"
-                            placeholder="Provide a detailed description including any distinctive features, marks, or accessories..."
-                            class="input-focus block w-full px-4 py-3 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none transition resize-none"></textarea>
-                    </div>
-
-                    <!-- Image Upload -->
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-900 mb-2">
-                            Image
-                        </label>
-                        <div class="upload-area rounded-lg p-8 text-center cursor-pointer">
-                            <input type="file" id="image" accept="image/*" class="hidden">
-                            <label for="image" class="cursor-pointer">
-                                <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                                <p class="text-sm text-gray-600 font-medium mb-1">Click to upload or drag and drop</p>
-                                <p class="text-xs text-gray-500">PNG, JPG, WEBP up to 10MB</p>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Lost At (Internal Area) -->
-                    <div>
-                        <label for="lostAt" class="block text-sm font-semibold text-gray-900 mb-2">
-                            Lost At (Internal Area)
-                        </label>
-                        <input 
-                            type="text" 
-                            id="lostAt" 
-                            placeholder="e.g., Lobby, Room 305, Conference Hall A, Parking Level 2"
-                            class="input-focus block w-full px-4 py-3 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none transition">
-                    </div>
-
-
-                    <!-- Submit Button -->
-                    <div class="pt-4">
-                        <button id="submitBtn" type="submit" class="btn-elegant w-full text-white px-8 py-4 rounded-lg text-base font-semibold shadow-lg">
-                            Submit Report
-                        </button>
-                    </div>
-
-                    <!-- Additional Help Text -->
-                    <div class="text-center pt-2">
-                        <p class="text-sm text-gray-500">
-                            You will receive notifications once a match is found
-                        </p>
-                    </div>
-                </form>
+            <!-- Image Upload Section -->
+            <div class="form-group">
+              <label class="form-label">Image</label>
+              <div class="upload-area" id="uploadArea">
+                <div class="upload-content">
+                  <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                  <p class="text-lg font-semibold text-gray-700 mb-2">Click to upload or drag and drop</p>
+                  <p class="text-sm text-gray-500">PNG, JPG, WEBP up to 10MB</p>
                 </div>
-        
+                <input type="file" id="image" accept="image/*" class="hidden">
+              </div>
+              <span class="help-text">Upload a clear photo of the item for better matching results</span>
+              <!-- File preview container -->
+              <div id="filePreviewContainer" class="hidden"></div>
+            </div>
+
+            <!-- Lost Location Section -->
+            <div class="form-group">
+              <label for="lostAt" class="form-label">Lost At (Internal Area)</label>
+              <input 
+                type="text" 
+                id="lostAt" 
+                placeholder="e.g., Lobby, Room 305, Conference Hall A, Parking Level 2"
+                class="form-input">
+              <span class="help-text">Be as specific as possible about where you think you lost the item</span>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="pt-6">
+              <button id="submitBtn" type="submit" class="btn-submit">
+                <i class="fas fa-paper-plane mr-3"></i>Submit Report
+              </button>
+            </div>
+
+            <!-- Additional Help Text -->
+            <div class="text-center pt-4">
+              <p class="text-sm text-gray-500">
+                <i class="fas fa-bell mr-2"></i>You will receive notifications once a match is found
+              </p>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </div>
 
+  <script>
+    // Character counter for description
+    const description = document.getElementById('description');
+    const charCount = document.getElementById('charCount');
+    
+    description.addEventListener('input', function() {
+      charCount.textContent = this.value.length;
+    });
 
+    // Enhanced image upload functionality
+    const imageInput = document.getElementById('image');
+    const uploadArea = document.getElementById('uploadArea');
+    const filePreviewContainer = document.getElementById('filePreviewContainer');
+
+    // Click upload area to trigger file input
+    uploadArea.addEventListener('click', function(e) {
+      if (!e.target.closest('.remove-btn')) {
+        imageInput.click();
+      }
+    });
+
+    // Drag and drop functionality
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      uploadArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      uploadArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      uploadArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight() {
+      uploadArea.classList.add('dragover');
+    }
+
+    function unhighlight() {
+      uploadArea.classList.remove('dragover');
+    }
+
+    uploadArea.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      imageInput.files = files;
+      handleImageSelect();
+    }
+
+    // Handle file selection
+    imageInput.addEventListener('change', handleImageSelect);
+
+    function handleImageSelect() {
+      const file = imageInput.files[0];
+      if (file) {
+        // Hide upload area content
+        uploadArea.querySelector('.upload-content').style.display = 'none';
+        
+        // Show file preview
+        const fileName = file.name;
+        const fileSize = (file.size / 1024 / 1024).toFixed(2);
+        
+        const filePreview = document.createElement('div');
+        filePreview.className = 'file-preview';
+        filePreview.innerHTML = `
+          <div class="file-info">
+            <i class="fas fa-file-image file-icon"></i>
+            <div class="file-details">
+              <div class="file-name">${fileName}</div>
+              <div class="file-size">${fileSize} MB</div>
+            </div>
+          </div>
+          <button type="button" class="remove-btn" onclick="removeImage()">
+            <i class="fas fa-times"></i>
+          </button>
+        `;
+        
+        filePreviewContainer.innerHTML = '';
+        filePreviewContainer.appendChild(filePreview);
+        filePreviewContainer.classList.remove('hidden');
+      }
+    }
+
+    function removeImage() {
+      imageInput.value = '';
+      uploadArea.querySelector('.upload-content').style.display = 'block';
+      filePreviewContainer.classList.add('hidden');
+      filePreviewContainer.innerHTML = '';
+    }
+
+    // Form submission
+    document.getElementById('reportForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Get the submit button
+      const submitBtn = document.getElementById('submitBtn');
+      const originalText = submitBtn.innerHTML;
+      
+      // Show loading state
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-3"></i>Submitting...';
+      submitBtn.disabled = true;
+      
+      // Your existing form submission logic here
+      // ... (your JavaScript form submission code)
+      
+      // For demo purposes, reset after 2 seconds
+      setTimeout(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        alert('Form submitted successfully! (Demo)');
+        // Uncomment below for actual form reset
+        // document.getElementById('reportForm').reset();
+        // charCount.textContent = '0';
+        // removeImage();
+      }, 2000);
+    });
+  </script>
 </body>
 </html>

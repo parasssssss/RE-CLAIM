@@ -6,8 +6,10 @@
     <title>ReClaim - Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="javascript/dashboard.js" type="module" defer></script>
     <script src="javascript/common.js" defer></script>
+    <script src="javascript/profile-dropdown.js" type="module" defer></script>
     <style>
         /* Sidebar overlay */
         .sidebar-overlay {
@@ -42,6 +44,418 @@
         
         .sidebar-container.active {
             transform: translateX(0);
+        }
+
+        /* Elegant Dashboard Styles */
+        .elegant-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            transition: all 0.3s ease;
+        }
+
+        .elegant-card:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .date-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 16px 16px 0 0;
+        }
+
+        .welcome-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .date-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .updates-section {
+            padding: 24px;
+            border-bottom: 1px solid #f1f1f1;
+        }
+
+        .updates-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #6b7280;
+            margin-bottom: 16px;
+        }
+
+        .update-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .update-stat {
+            text-align: center;
+        }
+
+        .update-number {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .update-label {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .orders-section {
+            padding: 24px;
+        }
+
+        .orders-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .orders-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .orders-count {
+            font-size: 14px;
+            color: #6b7280;
+            background: #f3f4f6;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .orders-count strong {
+            color: #1f2937;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background-color 0.2s;
+        }
+
+        .order-item:hover {
+            background-color: #f9fafb;
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+        }
+
+        .order-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .order-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .order-price {
+            font-size: 14px;
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .view-all-btn {
+            display: block;
+            text-align: center;
+            padding: 16px;
+            color: #3b82f6;
+            font-weight: 600;
+            border-top: 1px solid #f3f4f6;
+            transition: background-color 0.2s;
+        }
+
+        .view-all-btn:hover {
+            background-color: #f9fafb;
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .stats-card-header {
+            margin-bottom: 20px;
+        }
+
+        .stats-card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .stats-card-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .stats-card-change {
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+
+        .stats-card-change.positive {
+            color: #10b981;
+        }
+
+        .stats-card-change.negative {
+            color: #ef4444;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .chart-card-header {
+            margin-bottom: 24px;
+        }
+
+        .chart-card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .chart-card-subtitle {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .timeline {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #f3f4f6;
+            overflow-x: auto;
+        }
+
+        .timeline-item {
+            font-size: 12px;
+            color: #6b7280;
+            white-space: nowrap;
+            padding: 0 4px;
+        }
+
+        .promo-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .promo-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+        }
+
+        .promo-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .promo-description {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 24px;
+            position: relative;
+            z-index: 1;
+            line-height: 1.6;
+        }
+
+        .btn-upgrade {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn-upgrade:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .products-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .products-header {
+            margin-bottom: 20px;
+        }
+
+        .products-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .products-subtitle {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .market-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .market-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%);
+        }
+
+        .market-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        .btn-purchase {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-purchase:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
+        }
+
+        .main-content-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+
+        @media (min-width: 1024px) {
+            .main-content-grid {
+                grid-template-columns: 2fr 1fr;
+            }
+            
+            .left-column {
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+            }
+            
+            .right-column {
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+            }
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .quick-action-btn {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .quick-action-btn:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+
+        .quick-action-btn.primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            border: none;
+            color: white;
+        }
+
+        .quick-action-icon {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .quick-action-label {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .update-stats {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
         }
     </style>
 </head>
@@ -195,114 +609,288 @@
     <!-- Main Content Area -->
     <div class="py-8">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <!-- DASHBOARD HOME CONTENT -->
-        <div class="mb-8">
-          <h2 class="text-2xl font-serif font-bold text-gray-900 mb-2">Dashboard Home</h2>
-          <p class="text-gray-600">Welcome back! Here's your overview.</p>
+        <div class="main-content-grid">
+          <!-- Left Column -->
+          <div class="left-column">
+            <!-- Main Dashboard Card -->
+            <div class="elegant-card">
+              <!-- Date & Welcome Header -->
+              <div class="date-header">
+                <h1 id="current-date" class="text-3xl md:text-4xl font-bold text-white-900 mb-3 font-serif">Friday, Jan 23, 2026</h1>
+                <p id="welcome-message" class="text-base md:text-lg text-white-600 font-sans">Good morning, Captain!</p>
+              </div>
+
+              <!-- Updates Section -->
+              <div class="updates-section">
+                <h3 class="updates-title">Updates from yesterday</h3>
+                <div class="update-stats" id="yesterday-updates">
+                  <!-- Will be populated dynamically -->
+                  <div class="update-stat">
+                    <div class="update-number">2,110</div>
+                    <div class="update-label">Reports Filed</div>
+                  </div>
+                  <div class="update-stat">
+                    <div class="update-number">94%</div>
+                    <div class="update-label">Success Rate</div>
+                  </div>
+                  <div class="update-stat">
+                    <div class="update-number">1,124</div>
+                    <div class="update-label">Items Recovered</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Today's Orders/Reports -->
+              <div class="orders-section">
+                <div class="orders-header">
+                  <h3 class="orders-title">Today's Reports</h3>
+                  <div class="orders-count">
+                    You have <strong id="today-reports-count">16</strong> reports today
+                  </div>
+                </div>
+                
+                <div id="today-reports-list">
+                  <!-- Will be populated dynamically -->
+                  <div class="order-item">
+                    <div class="order-info">
+                      <span class="order-name">Lost Wallet - Black Leather</span>
+                      <span class="order-price">High Priority</span>
+                    </div>
+                  </div>
+                  <div class="order-item">
+                    <div class="order-info">
+                      <span class="order-name">iPhone 14 Pro Max</span>
+                      <span class="order-price">Matched by AI</span>
+                    </div>
+                  </div>
+                  <div class="order-item">
+                    <div class="order-info">
+                      <span class="order-name">Car Keys - Toyota</span>
+                      <span class="order-price">Pending Claim</span>
+                    </div>
+                  </div>
+                  <div class="order-item">
+                    <div class="order-info">
+                      <span class="order-name">Laptop Bag</span>
+                      <span class="order-price">Under Review</span>
+                    </div>
+                  </div>
+                  <div class="order-item">
+                    <div class="order-info">
+                      <span class="order-name">Smart Watch - Apple</span>
+                      <span class="order-price">Recovered</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <a href="my-reports.html" class="view-all-btn">
+                  View All Reports →
+                </a>
+              </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="elegant-card p-6">
+              <div class="quick-actions">
+                <a href="report-lost.html" class="quick-action-btn primary">
+                  <div class="quick-action-icon">
+                    <i class="fas fa-plus-circle"></i>
+                  </div>
+                  <div class="quick-action-label">Report Lost Item</div>
+                </a>
+                
+                <a href="my-reports.html" class="quick-action-btn">
+                  <div class="quick-action-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                  </div>
+                  <div class="quick-action-label">View My Reports</div>
+                </a>
+                
+                <a href="ai-match.html" class="quick-action-btn">
+                  <div class="quick-action-icon">
+                    <i class="fas fa-robot"></i>
+                  </div>
+                  <div class="quick-action-label">Check AI Matches</div>
+                </a>
+              </div>
+            </div>
+
+            <!-- Revenue Chart Section -->
+            <div class="chart-card elegant-card">
+              <div class="chart-card-header">
+                <h3 class="chart-card-title">Recovery Rate</h3>
+                <p class="chart-card-subtitle">Amount of recoveries this month compared to last year</p>
+              </div>
+              
+              <!-- Simple chart visualization -->
+              <div class="h-48 flex items-end space-x-1 mt-4">
+                <div class="flex-1 bg-gradient-to-t from-blue-500 to-blue-300 rounded-t" style="height: 40%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-green-500 to-green-300 rounded-t" style="height: 60%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-purple-500 to-purple-300 rounded-t" style="height: 80%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-yellow-500 to-yellow-300 rounded-t" style="height: 50%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-red-500 to-red-300 rounded-t" style="height: 70%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-indigo-500 to-indigo-300 rounded-t" style="height: 65%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-pink-500 to-pink-300 rounded-t" style="height: 45%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-blue-500 to-blue-300 rounded-t" style="height: 75%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-green-500 to-green-300 rounded-t" style="height: 55%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-purple-500 to-purple-300 rounded-t" style="height: 85%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-yellow-500 to-yellow-300 rounded-t" style="height: 65%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-red-500 to-red-300 rounded-t" style="height: 45%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-indigo-500 to-indigo-300 rounded-t" style="height: 60%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-pink-500 to-pink-300 rounded-t" style="height: 70%;"></div>
+                <div class="flex-1 bg-gradient-to-t from-blue-500 to-blue-300 rounded-t" style="height: 80%;"></div>
+              </div>
+              
+              <!-- Timeline -->
+              <div class="timeline" id="revenue-timeline">
+                <!-- Will be populated dynamically -->
+                <span class="timeline-item">Jan 09</span>
+                <span class="timeline-item">Jan 10</span>
+                <span class="timeline-item">Jan 11</span>
+                <span class="timeline-item">Jan 12</span>
+                <span class="timeline-item">Jan 13</span>
+                <span class="timeline-item">Jan 14</span>
+                <span class="timeline-item">Jan 15</span>
+                <span class="timeline-item">Jan 16</span>
+                <span class="timeline-item">Jan 17</span>
+                <span class="timeline-item">Jan 18</span>
+                <span class="timeline-item">Jan 19</span>
+                <span class="timeline-item">Jan 20</span>
+                <span class="timeline-item">Jan 21</span>
+                <span class="timeline-item">Jan 22</span>
+                <span class="timeline-item">Jan 23</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="right-column">
+            <!-- Monthly Stats -->
+            <div class="stats-card elegant-card">
+              <div class="stats-card-header">
+                <h4 class="stats-card-title">Monthly Recoveries</h4>
+                <div class="stats-card-value" id="monthly-recoveries">24</div>
+                <div class="stats-card-change positive" id="monthly-change">
+                  <i class="fas fa-arrow-up mr-1"></i> +4.33% vs last month
+                </div>
+              </div>
+            </div>
+
+            <!-- Success Rate -->
+            <div class="stats-card elegant-card">
+              <div class="stats-card-header">
+                <h4 class="stats-card-title">Success Rate</h4>
+                <div class="stats-card-value" id="success-rate">94%</div>
+                <div class="stats-card-change negative" id="success-rate-change">
+                  <i class="fas fa-arrow-down mr-1"></i> -1.03% vs last month
+                </div>
+              </div>
+            </div>
+
+            <!-- Promo/Upgrade Card -->
+            <div class="promo-card elegant-card">
+              <h3 class="promo-title">Grow your recovery rate.</h3>
+              <p class="promo-description">
+                Access advanced AI matching tools and proven strategies to recover items faster and smarter.
+              </p>
+              <button class="btn-upgrade">
+                <i class="fas fa-rocket mr-2"></i> Upgrade Now
+              </button>
+            </div>
+
+            <!-- Top Categories -->
+            <div class="products-card elegant-card">
+              <div class="products-header">
+                <h3 class="products-title">Top Categories</h3>
+                <p class="products-subtitle">Detailed information about recovered item categories</p>
+              </div>
+              
+              <div class="space-y-4 mt-4" id="top-categories">
+                <!-- Will be populated dynamically -->
+                <div class="flex items-center justify-between">
+                  <span>Electronics</span>
+                  <span class="font-semibold">42%</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span>Wallets & Purses</span>
+                  <span class="font-semibold">23%</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span>Keys</span>
+                  <span class="font-semibold">15%</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span>Jewelry</span>
+                  <span class="font-semibold">12%</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span>Documents</span>
+                  <span class="font-semibold">8%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Market Share -->
+            <div class="market-card elegant-card">
+              <h3 class="market-title">Market Coverage</h3>
+              <p class="text-gray-600 mb-6">Percentage of lost items successfully recovered this month</p>
+              
+              <div class="mb-6">
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div class="bg-gradient-to-r from-purple-500 to-indigo-600 h-2.5 rounded-full" style="width: 76%"></div>
+                </div>
+                <div class="flex justify-between mt-2">
+                  <span class="text-sm text-gray-600">Recovery Rate</span>
+                  <span class="text-sm font-semibold">76%</span>
+                </div>
+              </div>
+              
+              <button class="btn-purchase">
+                <i class="fas fa-chart-line mr-2"></i> View Analytics
+              </button>
+            </div>
+          </div>
         </div>
-
-        <!-- Overview Cards -->
-        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-          <div class="bg-white overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 truncate">Total Reports Filed</dt>
-                    <dd class="text-2xl font-bold text-gray-900">24</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-white overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 truncate">Items Matched by AI</dt>
-                    <dd class="text-2xl font-bold text-gray-900">18</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-white overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 truncate">Pending Claims</dt>
-                    <dd class="text-2xl font-bold text-gray-900">3</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-white overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 truncate">Success Rate</dt>
-                    <dd class="text-2xl font-bold text-gray-900">94%</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="bg-white shadow rounded-lg p-6 mb-8">
-          <h3 class="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <a href="report-lost.html" class="bg-gray-900 text-white px-4 py-3 rounded-lg flex items-center justify-center hover:bg-gray-800 transition">
-              <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
-              </svg>
-              Report Lost Item
-            </a>
-            <a href="my-reports.html" class="bg-white border border-gray-300 text-gray-900 px-4 py-3 rounded-lg flex items-center justify-center hover:bg-gray-50 transition">
-              <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.801 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.801 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
-              </svg>
-              View My Reports
-            </a>
-            <a href="ai-match.html" class="bg-white border border-gray-300 text-gray-900 px-4 py-3 rounded-lg flex items-center justify-center hover:bg-gray-50 transition">
-              <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-              </svg>
-              Check AI Matches
-            </a>
-          </div>
-        </div>
-        <!-- END DASHBOARD HOME CONTENT -->
       </div>
     </div>
   </div>
+
+  <script>
+    // Initialize dynamic data (this would come from your dashboard.js)
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set current date
+      const currentDate = new Date();
+      const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+      document.getElementById('current-date').textContent = currentDate.toLocaleDateString('en-US', options);
+      
+      // Set welcome message based on time of day
+      const hour = currentDate.getHours();
+      let greeting = 'Good morning';
+      if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
+      if (hour >= 17) greeting = 'Good evening';
+      document.getElementById('welcome-message').textContent = `${greeting}, Captain!`;
+      
+      // These would be populated by your dashboard.js
+      // For now, we're using static data that can be replaced dynamically
+      
+      // Example of how dynamic data would be populated:
+      // fetchDashboardData().then(data => {
+      //   document.getElementById('yesterday-updates').innerHTML = `
+      //     <div class="update-stat">
+      //       <div class="update-number">${data.yesterdayReports}</div>
+      //       <div class="update-label">Reports Filed</div>
+      //     </div>
+      //     <div class="update-stat">
+      //       <div class="update-number">${data.successRate}%</div>
+      //       <div class="update-label">Success Rate</div>
+      //     </div>
+      //     <div class="update-stat">
+      //       <div class="update-number">${data.recoveredItems}</div>
+      //       <div class="update-label">Items Recovered</div>
+      //     </div>
+      //   `;
+      // });
+    });
+  </script>
 </body>
 </html>
