@@ -19,7 +19,7 @@ async function fetchReport() {
     }
 
     try {
-        const res = await fetch(`${API_BASE_URL}/item/${itemId}`, {
+        const res = await fetch(`${API_BASE_URL}/items/item/${itemId}`, {
             headers: {
                 "Authorization": `Bearer ${token}`
             }

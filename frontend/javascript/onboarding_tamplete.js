@@ -51,7 +51,7 @@ checkoutBtn.addEventListener("click", async () => {
 
     try {
         // Step 1: Start onboarding and get registration token
-        const startRes = await fetch("http://127.0.0.1:8000/onboarding/start", {
+        const startRes = await fetch("http://127.0.0.1:8000/onboarding/onboarding/start", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -70,7 +70,7 @@ checkoutBtn.addEventListener("click", async () => {
                 alert("✅ Payment success! Payment ID: " + response.razorpay_payment_id);
 
                 // Step 3: Complete onboarding
-                const completeRes = await fetch(`http://127.0.0.1:8000/onboarding/complete?token=${registration_token}`, {
+                const completeRes = await fetch(`http://127.0.0.1:8000/onboarding/onboarding/complete?token=${registration_token}`, {
                     method: "POST"
                 });
                 const completeData = await completeRes.json();

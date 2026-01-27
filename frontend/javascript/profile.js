@@ -28,7 +28,7 @@ let selectedFile = null;
 // ------------------------
 async function fetchProfile() {
     try {
-        const res = await fetch("http://127.0.0.1:8000/me", {
+        const res = await fetch("http://127.0.0.1:8000/users/me", {
             headers: {
                 "Authorization": `Bearer ${token}`
             }
@@ -240,7 +240,7 @@ async function sendProfileUpdate(imageBase64, mime) {
         ...(mime && { profile_image_mime: mime })
     };
 
-    const res = await fetch("http://127.0.0.1:8000/profile", {
+    const res = await fetch("http://127.0.0.1:8000/users/profile", {
         method: "PUT",
         headers: {
             "Content-Type": "application/json",

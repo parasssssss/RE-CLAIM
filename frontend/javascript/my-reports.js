@@ -18,7 +18,7 @@ async function fetchMyReports(page = 1) {
     }
 
     try {
-        const res = await fetch(`${API_BASE_URL}/my-items`, {
+        const res = await fetch(`${API_BASE_URL}/items/my-items`, {
             headers: {
                 "Authorization": `Bearer ${token}`
             }
@@ -201,23 +201,30 @@ async function deleteReport(id) {
     const token = localStorage.getItem("token");
 
     try {
-        const res = await fetch(`${API_BASE_URL}/${id}`, {
+        const res = await fetch(`${API_BASE_URL}/items/${id}`, {
             method: "DELETE",
-            headers: { "Authorization": `Bearer ${token}` }
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
         });
 
         if (res.ok) {
             alert("Report deleted successfully!");
             fetchMyReports(currentPage); // refresh current page
-        } else {
-            alert("Failed to delete report.");
+            return;
         }
 
+        // 🔴 handle backend error message
+        const data = await res.json();
+
+        alert(data.detail || "Unable to delete this report.");
+
     } catch (error) {
-        console.error(error);
-        alert("Error while deleting.");
+        console.error("Delete error:", error);
+        alert("Server error while deleting report.");
     }
 }
+
 
 // ===================== INITIAL LOAD =====================
 window.onload = () => {

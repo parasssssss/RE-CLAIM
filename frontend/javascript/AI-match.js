@@ -14,7 +14,7 @@ async function fetchMatches(page = 1) {
     const token = localStorage.getItem("token");
     if (!token) throw new Error("User not authenticated");
 
-    const res = await fetch("http://127.0.0.1:8000/matches", {
+    const res = await fetch("http://127.0.0.1:8000/matches/matches", {
       headers: { "Authorization": "Bearer " + token }
     });
 
@@ -38,7 +38,7 @@ async function fetchCurrentUser() {
     const token = localStorage.getItem("token");
     if (!token) throw new Error("Not authenticated");
 
-    const res = await fetch("http://127.0.0.1:8000/me", {
+    const res = await fetch("http://127.0.0.1:8000/users/me", {
       headers: { Authorization: "Bearer " + token }
     });
 
@@ -327,7 +327,7 @@ window.approveMatch = async function(matchId) {
   try {
     const token = localStorage.getItem("token");
 
-    const res = await fetch(`http://127.0.0.1:8000/admin/approve-match/${matchId}`, {
+    const res = await fetch(`http://127.0.0.1:8000/admin/admin/approve-match/${matchId}`, {
       method: "POST",
       headers: { Authorization: "Bearer " + token }
     });
@@ -348,7 +348,7 @@ window.rejectMatch = async function(matchId) {
   try {
     const token = localStorage.getItem("token");
 
-    const res = await fetch(`http://127.0.0.1:8000/admin/reject-match/${matchId}`, {
+    const res = await fetch(`http://127.0.0.1:8000/admin/admin/reject-match/${matchId}`, {
       method: "POST",
       headers: { Authorization: "Bearer " + token }
     });

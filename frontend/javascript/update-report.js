@@ -23,6 +23,29 @@ const date = document.getElementById("date");
 
 const backBtn = document.getElementById("backBtn");
 
+
+function fillForm(item) {
+    console.log("Filling form with:", item);
+
+    if (item.image_path && itemImage) {
+        itemImage.src = `${API_BASE_URL}/${item.image_path}`;
+        itemImage.classList.remove("hidden");
+    }
+
+    if (itemStatus) itemStatus.innerText = item.status || "Pending";
+
+    if (itemType) itemType.value = item.item_type || "";
+    if (brand) brand.value = item.brand || "";
+    if (color) color.value = item.color || "";
+    if (description) description.value = item.description || "";
+    if (lostAt) lostAt.value = item.lost_location || "";
+
+    if (date && item.lost_date) {
+        date.value = item.lost_date.split("T")[0];
+    }
+}
+
+
 /* =============================
    Fetch existing report details
 ============================= */
@@ -36,11 +59,17 @@ async function fetchReport() {
     }
 
     try {
-        const res = await fetch(`${API_BASE_URL}/item/${itemId}`, {
+        const res = await fetch(`${API_BASE_URL}/items/item/${itemId}`, {
             headers: {
                 "Authorization": `Bearer ${token}`
             }
         });
+
+        if (res.status === 403) {
+            const data = await res.json();
+            lockForm(data.detail || "This report is locked.");
+            return;
+        }
 
         if (!res.ok) {
             throw new Error("Failed to fetch report");
@@ -52,29 +81,6 @@ async function fetchReport() {
     } catch (err) {
         console.error(err);
         alert("Unable to load report");
-    }
-}
-
-/* =============================
-   Fill form with data
-============================= */
-function fillForm(item) {
-    // image
-    if (item.image_path) {
-        itemImage.src = `${API_BASE_URL}/${item.image_path}`;
-        itemImage.classList.remove("hidden");
-    }
-
-    itemStatus.innerText = item.status ?? "Pending";
-
-    itemType.value = item.item_type ?? "";
-    brand.value = item.brand ?? "";
-    color.value = item.color ?? "";
-    description.value = item.description ?? "";
-    lostAt.value = item.lost_location ?? "";
-
-    if (item.lost_date) {
-        date.value = item.lost_date.split("T")[0];
     }
 }
 
@@ -96,7 +102,7 @@ form.addEventListener("submit", async (e) => {
     };
 
     try {
-        const res = await fetch(`${API_BASE_URL}/item/${itemId}`, {
+        const res = await fetch(`${API_BASE_URL}/items/item/${itemId}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -106,8 +112,17 @@ form.addEventListener("submit", async (e) => {
         });
 
         if (!res.ok) {
-            throw new Error("Update failed");
-        }
+    const errData = await res.json();
+
+    if (res.status === 403) {
+        alert(errData.detail || "This report can no longer be edited.");
+        lockForm(errData.detail);
+        return;
+    }
+
+    throw new Error(errData.detail || "Update failed");
+}
+
 
         alert("Report updated successfully!");
         window.location.href = `/frontend/view-report.html?id=${itemId}`;
@@ -127,3 +142,21 @@ backBtn.addEventListener("click", () => {
 
 // load data
 window.onload = fetchReport;
+
+function lockForm(message) {
+    alert(message);
+
+    // Disable all inputs
+    form.querySelectorAll("input, textarea, select, button").forEach(el => {
+        el.disabled = true;
+    });
+
+    // Optional: visual hint
+    form.classList.add("opacity-60", "pointer-events-none");
+
+    // Show status text
+    itemStatus.innerText = "Match Found – Editing Locked";
+    itemStatus.classList.add("text-red-600");
+}
+
+

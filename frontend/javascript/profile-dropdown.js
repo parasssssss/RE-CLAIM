@@ -205,11 +205,10 @@ export class ProfileDropdown {
         // Update these values based on what your API returns
         this.roleMapping = {
             1: "Super Admin",
-            2: "Administrator",
-            3: "Manager", 
-            4: "Staff",
-            5: "User",
-            6: "Viewer"
+            2: "Admin",
+            3: "Staff", 
+            4: "User"
+            
         };
     }
 
@@ -327,14 +326,14 @@ injectDropdowns() {
     // Fetch user data from API
     async fetchUserData() {
         try {
-            const token = localStorage.getItem('authToken');
+            const token = localStorage.getItem('token');
             if (!token) {
                 console.warn('No auth token found');
                 this.loadDefaultUserData();
                 return;
             }
 
-            const response = await fetch('http://127.0.0.1:8000/me', {
+            const response = await fetch('http://127.0.0.1:8000/users/me', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,

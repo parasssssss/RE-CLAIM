@@ -13,7 +13,7 @@ const urlParams = new URLSearchParams(window.location.search);
         }
 
         try {
-          const res = await fetch("http://127.0.0.1:8000/reset-password", {
+          const res = await fetch("http://127.0.0.1:8000/auth/reset-password", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ token, new_password: password })

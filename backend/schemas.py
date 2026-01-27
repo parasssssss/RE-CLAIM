@@ -107,6 +107,22 @@ class MatchResponse(BaseModel):
     created_at: datetime
 
 
+class NotificationBase(BaseModel):
+    title: str
+    message: str
+    notification_type: str  # MATCH_FOUND, MATCH_APPROVED, MATCH_REJECTED, ITEM_RECOVERED
+
+class NotificationCreate(NotificationBase):
+    item_id: Optional[int] = None
+    match_id: Optional[int] = None
+
+class NotificationOut(NotificationBase):
+    notification_id: int
+    user_id: int
+    item_id: Optional[int] = None
+    match_id: Optional[int] = None  # only once
+    is_read: bool
+    created_at: datetime
 
 class Config:
     from_attributes = True

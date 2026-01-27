@@ -148,7 +148,7 @@ document.getElementById("loginBtn").addEventListener("click", async (e) => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
         
-        const res = await fetch("http://127.0.0.1:8000/login", {
+        const res = await fetch("http://127.0.0.1:8000/auth/login", {
             method: "POST",
             headers: { 
                 "Content-Type": "application/json",

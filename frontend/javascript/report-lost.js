@@ -79,7 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             const token = localStorage.getItem("token"); // JWT token
-            const response = await fetch("http://127.0.0.1:8000/report-item", {
+            const response = await fetch("http://127.0.0.1:8000/items/report-item", {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${token}`

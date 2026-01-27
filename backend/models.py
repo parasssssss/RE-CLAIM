@@ -121,3 +121,39 @@ class Match(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
 
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    notification_id = Column(Integer, primary_key=True, index=True)
+
+    # 🔗 Who receives the notification
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+
+    # 🔗 Optional context
+    item_id = Column(Integer, ForeignKey("items.item_id", ondelete="SET NULL"), nullable=True)
+    match_id = Column(Integer, ForeignKey("matches.match_id", ondelete="SET NULL"), nullable=True)
+
+    # 🧠 Notification content
+    title = Column(String(150), nullable=False)
+    message = Column(Text, nullable=False)
+
+    # 🔔 Type / Category
+    notification_type = Column(
+        String(50),
+        nullable=False
+    )
+    # MATCH_FOUND | MATCH_APPROVED | MATCH_REJECTED | ITEM_RECOVERED | SYSTEM
+
+    # 👁️ Read tracking
+    is_read = Column(Boolean, default=False)
+
+    # ⏰ Timestamp
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+    # 🔁 Relationships (optional but useful)
+    user = relationship("User")
+    item = relationship("Item")
+    match = relationship("Match")
+
+
+
