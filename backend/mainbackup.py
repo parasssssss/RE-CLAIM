@@ -671,3 +671,58 @@ def reject_match(
         "match_id": match_id,
         "status": "rejected"
     }
+
+
+# ✅ UPDATED: Complete Onboarding (Creates Subscription)
+@router.post("/onboarding/complete")
+def complete_onboarding(token: str, payment_id: str = None, db: Session = Depends(get_db)):
+    reg = db.query(models.BusinessRegistration).filter_by(registration_token=token).first()
+
+    if not reg:
+        raise HTTPException(status_code=400, detail="Invalid registration")
+    
+    if reg.status == "COMPLETED":
+        raise HTTPException(status_code=400, detail="Already completed")
+
+    # 1. Create Business
+    business = models.Business(
+        business_name=reg.business_name,
+        address=reg.address,
+        contact_email=reg.contact_email,
+        business_code=reg.business_code
+    )
+    db.add(business)
+    db.flush() 
+
+    # 2. Create Admin
+    admin = models.User(
+        first_name=reg.admin_name,
+        email=reg.admin_email,
+        password_hash=reg.admin_password_hash,
+        business_id=business.business_id,
+        role_id=2 # Admin
+    )
+    db.add(admin)
+
+    # 3. ✅ CREATE SUBSCRIPTION ENTRY
+    plan = db.query(models.SubscriptionPlan).filter_by(plan_id=reg.selected_plan_id).first()
+    if plan:
+        new_sub = models.BusinessSubscription(
+            business_id=business.business_id,
+            plan_id=plan.plan_id,
+            start_date=datetime.datetime.utcnow(),
+            end_date=datetime.datetime.utcnow() + datetime.timedelta(days=plan.duration_days),
+            status="ACTIVE",
+            payment_id=payment_id
+        )
+        db.add(new_sub)
+
+    # Update Registration Status
+    reg.status = "COMPLETED"
+    db.commit()
+
+    return {
+        "message": "Onboarding Successful", 
+        "business_code": business.business_code,
+        "subscription": plan.name if plan else "Unknown"
+    }

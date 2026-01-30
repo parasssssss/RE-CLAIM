@@ -41,116 +41,142 @@ async function fetchDashboard(userId) {
 function populateDashboard(data, user) {
   if (!data) return;
 
-  // --- Date & Welcome ---
+  // 1. Date & Welcome
   const now = new Date();
-  const options = { weekday: "long", month: "short", day: "numeric", year: "numeric" };
+  const options = { weekday: "long", month: "long", day: "numeric" };
   document.getElementById("current-date").textContent = now.toLocaleDateString("en-US", options);
-  document.getElementById("welcome-message").textContent = `Good ${
-    now.getHours() < 12 ? "morning" : now.getHours() < 18 ? "afternoon" : "evening"
-  }, ${user.first_name}!`;
+  
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  document.getElementById("welcome-message").textContent = `${greeting}, ${user.first_name}!`;
 
-  // --- Today Stats (Use for top cards instead of yesterday) ---
-  const t = data.today_stats ?? { items_reported: 0, matches_found: 0, items_recovered: 0 };
-  const todayStatsEl = document.getElementById("yesterday-updates"); // same card container, now "today-aware"
-  todayStatsEl.innerHTML = `
-    <div class="update-stat"><div class="update-number">${t.items_reported}</div><div class="update-label">Items reported</div></div>
-    <div class="update-stat"><div class="update-number">${t.matches_found}</div><div class="update-label">Matches Found</div></div>
-    <div class="update-stat"><div class="update-number">${t.items_recovered}</div><div class="update-label">Items Recovered</div></div>
-  `;
+  // 2. Stats Cards
+  const stats = data.stats || {};
+  animateValue("stat-active", 0, stats.active_reports || 0, 1000);
+  animateValue("stat-matches", 0, stats.matches_today || 0, 1000);
+  animateValue("stat-recovered", 0, stats.total_recovered || 0, 1000);
 
-  // --- Today's Reports ---
-  const todayReports = data.today_reports ?? [];
-  document.getElementById("today-reports-count").textContent = todayReports.length;
-  const todayListEl = document.getElementById("today-reports-list");
-  todayListEl.innerHTML = todayReports.map(r => `
-    <div class="order-item"><div class="order-info">
-      <span class="order-name">${r.item_type}${r.brand ? " - "+r.brand : ""}</span>
-      <span class="order-price">${r.status}</span>
-    </div></div>
-  `).join("");
-
-  // --- Monthly Stats ---
-  document.getElementById("monthly-recoveries").textContent = data.monthly_recoveries?.count ?? 0;
-  document.getElementById("monthly-change").innerHTML = `
-    <i class="fas fa-arrow-${data.monthly_recoveries.change >=0 ? "up":"down"} mr-1"></i>${data.monthly_recoveries.change >=0?"+":""}${data.monthly_recoveries.change.toFixed(2)}
-  `;
-  document.getElementById("success-rate").textContent = `${data.recovery_rate?.current ?? 0}%`;
-  document.getElementById("success-rate-change").innerHTML = `
-    <i class="fas fa-arrow-${data.recovery_rate.change >=0 ? "up":"down"} mr-1"></i>${data.recovery_rate.change >=0?"+":""}${data.recovery_rate.change.toFixed(2)}
-  `;
-
-  // --- Categories ---
-  const topCatEl = document.getElementById("top-categories");
-  topCatEl.innerHTML = (data.categories ?? []).map(c => `
-    <div class="flex items-center justify-between">
-      <span>${c.category}</span>
-      <span class="font-semibold">${c.percentage}%</span>
+  // 3. Recent Matches List
+  const matchesList = document.getElementById("recent-matches-list");
+  if (data.recent_matches && data.recent_matches.length > 0) {
+    // Update matches list HTML generation
+matchesList.innerHTML = data.recent_matches.map(m => `
+  <div class="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-yellow-500/30 transition-all cursor-pointer group" onclick="window.location.href='items.html?match_id=${m.match_id}'">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-black flex items-center justify-center border border-gray-700 text-lg shadow-inner">
+         ${m.similarity > 80 ? '🔥' : '🤖'}
+      </div>
+      <div>
+        <p class="font-bold text-gray-200 text-sm group-hover:text-yellow-400 transition-colors">${m.item_name}</p>
+        <p class="text-xs text-gray-500">#${m.match_id} • ${m.date}</p>
+      </div>
     </div>
-  `).join("");
-
-  // --- Progress Bar ---
-  const progressBar = document.querySelector(".market-card .bg-gradient-to-r");
-  progressBar.style.width = `${data.recovery_rate?.current ?? 0}%`;
-  document.querySelector(".market-card .flex .font-semibold").textContent = `${data.recovery_rate?.current ?? 0}%`;
-
-  // --- Chart.js ---
-  const ctx = document.createElement("canvas");
-  const chartContainer = document.querySelector(".chart-card .h-48");
-  chartContainer.innerHTML = "";
-  chartContainer.appendChild(ctx);
-
-  const labels = (data.activity_overview ?? []).map(a => a.date);
-  const reported = (data.activity_overview ?? []).map(a => a.items_reported);
-  const recovered = (data.activity_overview ?? []).map(a => a.items_recovered);
-
-  new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: labels,
-      datasets: [
-        { label: "Items Reported", data: reported, backgroundColor: "rgba(54, 162, 235, 0.7)", borderRadius: 4 },
-        { label: "Items Recovered", data: recovered, backgroundColor: "rgba(75, 192, 192, 0.7)", borderRadius: 4 }
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { position: "top" } },
-      scales: { y: { beginAtZero: true }, x: { stacked: false } }
-    }
-  });
-
-
-  // --- Daily Recovery Rate Chart ---
-const recoveryCtx = document.createElement("canvas");
-const recoveryContainer = document.getElementById("recovery-rate-chart-container");
-recoveryContainer.innerHTML = ""; // clear old chart
-recoveryContainer.appendChild(recoveryCtx);
-
-const recoveryRateData = (data.activity_overview ?? []).map(a => {
-  // calculate % recovered per day
-  return a.items_reported ? ((a.items_recovered / a.items_reported) * 100).toFixed(2) : 0;
-});
-
-new Chart(recoveryCtx, {
-  type: "line",
-  data: {
-    labels: (data.activity_overview ?? []).map(a => a.date),
-    datasets: [{
-      label: "Recovery Rate (%)",
-      data: recoveryRateData,
-      fill: true,
-      backgroundColor: "rgba(75,192,192,0.2)",
-      borderColor: "rgba(75,192,192,1)",
-      tension: 0.3
-    }]
-  },
-  options: {
-    responsive: true,
-    plugins: { legend: { position: "top" } },
-    scales: { y: { beginAtZero: true, max: 100 } }
+    <div class="text-right">
+      <span class="inline-block px-3 py-1 bg-yellow-500/10 rounded-md text-xs font-bold text-yellow-500 border border-yellow-500/20">
+        ${Math.round(m.similarity*100)}%
+      </span>
+    </div>
+  </div>
+`).join('');
+  } else {
+    matchesList.innerHTML = `<div class="text-center py-4 text-gray-400 text-sm">No matches found yet.</div>`;
   }
-});
 
+  // 4. Recent Reports List
+  const reportsList = document.getElementById("recent-reports-list");
+  if (data.recent_reports && data.recent_reports.length > 0) {
+    reportsList.innerHTML = data.recent_reports.map(item => `
+        <div class="flex items-center justify-between border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+            <div>
+                <p class="font-semibold text-gray-700 text-sm">${item.name}</p>
+                <p class="text-xs text-gray-400">${item.date}</p>
+            </div>
+            <span class="text-xs px-2 py-1 rounded-full ${getStatusColor(item.status)}">
+                ${item.status}
+            </span>
+        </div>
+    `).join('');
+  } else {
+    reportsList.innerHTML = `<div class="text-sm text-gray-400">No reports filed recently.</div>`;
+  }
+
+  // 5. Activity Chart
+  initChart(data.activity_chart || []);
+}
+
+// --- Helpers ---
+
+function getStatusColor(status) {
+    if (status === 'RECLAIMED') return 'bg-green-100 text-green-700';
+    if (status === 'LOST') return 'bg-red-100 text-red-700';
+    return 'bg-gray-100 text-gray-600';
+}
+
+function animateValue(id, start, end, duration) {
+    const obj = document.getElementById(id);
+    if (!obj) return;
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        obj.innerHTML = Math.floor(progress * (end - start) + start);
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        }
+    };
+    window.requestAnimationFrame(step);
+}
+
+function initChart(data) {
+    const ctx = document.getElementById('activityChart');
+    if (!ctx) return;
+    
+    if (window.myActivityChart) window.myActivityChart.destroy();
+
+    // Setup Gradient for the line
+    const canvas = ctx.getContext("2d");
+    const gradient = canvas.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(212, 175, 55, 0.5)'); // Gold top
+    gradient.addColorStop(1, 'rgba(212, 175, 55, 0.0)'); // Transparent bottom
+
+    window.myActivityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(d => d.date),
+            datasets: [{
+                label: 'Reports Filed',
+                data: data.map(d => d.count),
+                borderColor: '#D4AF37', // Gold Border
+                backgroundColor: gradient, // Gradient fill
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#D4AF37',
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true, 
+                    display: true,
+                    grid: { color: 'rgba(255,255,255,0.05)' }, // Subtle grid
+                    ticks: { color: '#9ca3af' } // Gray text
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: { color: '#9ca3af' } // Gray text
+                }
+            }
+        }
+    });
 }
 
 // ---------- DOM Load ----------

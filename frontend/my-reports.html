@@ -153,6 +153,16 @@
                 gap: 12px;
             }
         }
+
+        @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-entry { animation: fadeInUp 0.6s ease-out forwards; }
+    .item-card { opacity: 0; animation: fadeInUp 0.5s ease-out forwards; }
+    .item-card:nth-child(1) { animation-delay: 0.1s; }
+    .item-card:nth-child(2) { animation-delay: 0.2s; }
+    .item-card:nth-child(3) { animation-delay: 0.3s; }
     </style>
 </head>
 
@@ -368,60 +378,31 @@
       </header>
 
     <!-- Main Content Area -->
-    <div class="py-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="font-serif text-3xl font-bold text-gray-900 mb-8">My Reported Items</h2>
+    <div class="py-8 animate-entry">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
-        <!-- Items Container -->
-        <div id="reportsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <!-- Example Card Template -->
-          
-          <div class="item-card bg-white rounded-xl shadow-md border border-gray-100">
-
-            <!-- Image Section -->
-            <div class="relative h-48 overflow-hidden bg-gray-100">
-              <img src="IMAGE_URL" alt="Item Image" class="w-full h-full object-cover">
-              <div class="absolute top-3 right-3">
-                <span class="bg-white/90 backdrop-blur-sm text-gray-900 text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
-                  Pending
-                </span>
-              </div>
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
+            <div>
+                <h1 class="text-3xl font-serif font-bold text-gray-900 tracking-tight">
+                    My Reported Items <span class="text-yellow-500">.</span>
+                </h1>
+                <p class="mt-2 text-sm text-gray-500 max-w-xl leading-relaxed">
+                    View and manage the items you have reported as lost. Keep your listings updated for better matching results.
+                </p>
             </div>
             
-            <!-- Content Section -->
-            <div class="p-5">
-              <h3 class="font-serif text-xl font-semibold text-gray-900 mb-2">Item Type</h3>
-              <div class="space-y-1 mb-3">
-                <p class="text-sm text-gray-600">
-                  <span class="font-medium">Color:</span> Black
-                </p>
-                <p class="text-sm text-gray-600">
-                  <span class="font-medium">Brand:</span> Apple
-                </p>
-              </div>
-              <p class="text-xs text-gray-500 flex items-center">
-                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-                Reported on: 2025-01-10
-              </p>
-              
-              <!-- Action Buttons -->
-              <div class="flex gap-2 mt-5 pt-4 border-t border-gray-100">
-                <button class="btn-view flex-1 px-4 py-2.5 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800">
-                  View
-                </button>
-                <button class="btn-view flex-1 px-4 py-2.5 text-sm font-medium border-2 border-gray-900 text-gray-900 rounded-lg hover:bg-gray-900 hover:text-white">
-                  Update
-                </button>
-                <button class="btn-view px-4 py-2.5 text-sm font-medium border-2 border-gray-300 text-gray-600 rounded-lg hover:border-red-600 hover:text-red-600 hover:bg-red-50">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                  </svg>
-                </button>
-              </div>
+            <a href="report-item.html" class="group flex items-center justify-center gap-2 px-6 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-xl shadow-lg hover:bg-gray-800 hover:-translate-y-0.5 transition-all duration-200">
+                <i class="fas fa-plus text-yellow-500 group-hover:rotate-90 transition-transform"></i>
+                Report New Item
+            </a>
+        </div>
+
+        <div id="reportsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             </div>
-          </div>
+
+        <div id="pagination" class="flex justify-center gap-2 mt-12"></div>
+    </div>
+</div>
           
         </div>
       </div>

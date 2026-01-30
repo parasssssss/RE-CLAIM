@@ -198,7 +198,7 @@ document.getElementById("loginBtn").addEventListener("click", async (e) => {
                 if (roleId === 2) {
                     window.location.href = "dashboard_admin.html";
                 } else if (roleId === 3) {
-                    window.location.href = "dashboard_staff.html";
+                    window.location.href = "dashboard_normie.html";
                 } else {
                     window.location.href = "dashboard_normie.html";
                 }

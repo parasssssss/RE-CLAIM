@@ -1,373 +1,388 @@
-const container = document.getElementById("reportsContainer");
-const overlay = document.getElementById("matchOverlay");
-const overlayContent = document.getElementById("overlayContent");
+// ✅ IIFE to prevent variable conflicts
+(() => {
+    const container = document.getElementById("reportsContainer");
+    const overlay = document.getElementById("matchOverlay");
+    const overlayContent = document.getElementById("overlayContent");
+    const modalBackdrop = document.getElementById("modalBackdrop");
+    const modalPanel = document.getElementById("modalPanel");
 
-// Pagination state
-let currentPage = 1;
-const pageSize = 6; // Number of matches per page
-let totalMatches = 0;
-let matchesData = [];
+    // Pagination state
+    let currentPage = 1;
+    const pageSize = 6; 
+    let totalMatches = 0;
+    let matchesData = [];
+    let currentUser = null;
 
-// ===================== FETCH MATCHES =====================
-async function fetchMatches(page = 1) {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("User not authenticated");
+    // ===================== INITIAL FETCH =====================
+    // This runs immediately when file loads
+    (async () => {
+        await fetchCurrentUser();
+        fetchMatches(currentPage);
+    })();
 
-    const res = await fetch("http://127.0.0.1:8000/matches/matches", {
-      headers: { "Authorization": "Bearer " + token }
-    });
+    // ===================== FETCH MATCHES =====================
+    async function fetchMatches(page = 1) {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) throw new Error("User not authenticated");
 
-    if (!res.ok) throw new Error("Failed to fetch matches");
+            const res = await fetch("http://127.0.0.1:8000/matches/matches", {
+                headers: { "Authorization": "Bearer " + token }
+            });
 
-    const data = await res.json();
-    matchesData = data;
-    totalMatches = data.length;
-    renderMatchesPage(page);
-  } catch (err) {
-    console.error(err);
-    container.innerHTML = `<p class="text-red-500 text-lg">Error loading matches</p>`;
-  }
-}
+            if (!res.ok) throw new Error("Failed to fetch matches");
 
-let currentUser = null;
+            const data = await res.json();
+            matchesData = data;
+            totalMatches = data.length;
+            renderMatchesPage(page);
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = `
+                <div class="col-span-full flex flex-col items-center justify-center py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                    <i class="fas fa-exclamation-circle text-gray-300 text-4xl mb-4"></i>
+                    <p class="text-gray-500 text-lg">Unable to load AI matches at this time.</p>
+                </div>`;
+        }
+    }
 
-// ===================== FETCH CURRENT USER =====================
-async function fetchCurrentUser() {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Not authenticated");
+    // ===================== FETCH CURRENT USER =====================
+    async function fetchCurrentUser() {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) return;
 
-    const res = await fetch("http://127.0.0.1:8000/users/me", {
-      headers: { Authorization: "Bearer " + token }
-    });
+            const res = await fetch("http://127.0.0.1:8000/users/me", {
+                headers: { Authorization: "Bearer " + token }
+            });
 
-    if (!res.ok) throw new Error("Failed to fetch user");
+            if (res.ok) currentUser = await res.json();
+        } catch (err) {
+            console.error(err);
+        }
+    }
 
-    currentUser = await res.json();
-    console.log("Logged in user:", currentUser);
-  } catch (err) {
-    console.error(err);
-  }
-}
+    // ===================== RENDER SUMMARY CARD =====================
+    function renderSummaryCard(match) {
+        const status = match.status ? match.status.toUpperCase() : "PENDING";
+        const score = Math.round(match.similarity_score * 100);
 
+        // Status Styles
+        let badgeClass = "bg-gray-100 text-gray-600";
+        if (status === "APPROVED") badgeClass = "bg-emerald-100 text-emerald-700 border border-emerald-200";
+        if (status === "PENDING") badgeClass = "bg-yellow-100 text-yellow-700 border border-yellow-200";
+        if (status === "REJECTED") badgeClass = "bg-red-100 text-red-700 border border-red-200";
 
-// ===================== RENDER SUMMARY CARD =====================
-function renderSummaryCard(match) {
-  const status = match.status.toUpperCase();
+        // Image Handling with Fallback
+        const imgPath = match.found.image_path 
+            ? `http://127.0.0.1:8000/${match.found.image_path}` 
+            : 'https://via.placeholder.com/400x300?text=No+Image';
 
-  const statusStyles = {
-    APPROVED: "bg-emerald-100 text-emerald-700",
-    PENDING: "bg-yellow-100 text-yellow-700",
-    REJECTED: "bg-red-100 text-red-700"
-  };
+        return `
+            <div class="relative group h-full flex flex-col">
+                <div class="absolute top-4 right-4 z-10">
+                    <span class="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase ${badgeClass} shadow-sm">
+                        ${status}
+                    </span>
+                </div>
 
-  return `
-    <div class="relative">
-      
-      <!-- STATUS BADGE (TOP RIGHT) -->
-      <div class="absolute top-4 right-4 z-10">
-        <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[status] || "bg-gray-100 text-gray-700"}">
-          ${status}
-        </span>
-      </div>
+                <div class="absolute top-4 left-4 z-10">
+                    <div class="flex items-center gap-1 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-white/50">
+                        <div class="w-2 h-2 rounded-full ${score > 80 ? 'bg-green-500' : 'bg-yellow-500'} animate-pulse"></div>
+                        <span class="text-xs font-bold text-gray-800">${score}% Match</span>
+                    </div>
+                </div>
 
-      <!-- Top row: match % -->
-      <div class="mb-4 px-5 pt-5">
-        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
-          ${status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
-            status === 'PENDING' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-700'}">
-          ${Math.round(match.similarity_score * 100)}% Match
-        </span>
-      </div>
+                <div class="relative h-64 overflow-hidden bg-gray-100 border-b border-gray-100">
+                    <img src="${imgPath}" 
+                         class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                         onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'"
+                         alt="Found Item">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60"></div>
+                    
+                    <div class="absolute bottom-4 left-4 right-4 text-white">
+                        <p class="text-xs font-medium text-yellow-300 mb-0.5 uppercase tracking-wide">${match.lost.brand || "Unknown Brand"}</p>
+                        <h3 class="font-serif text-xl font-bold truncate">${match.lost.item_type || "Unknown Item"}</h3>
+                    </div>
+                </div>
 
-      <!-- Image -->
-      <div class="relative bg-[#f5f6f8] rounded-[28px] mb-4 overflow-hidden h-52 mx-5">
-        <img src="http://127.0.0.1:8000/${match.found.image_path}" 
-             class="w-full h-full object-cover object-center"
-             alt="Found Item">
-      </div>
+                <div class="p-6 flex-1 flex flex-col">
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Color</p>
+                            <p class="text-sm font-medium text-gray-900 capitalize">${match.lost.color || "N/A"}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Date Found</p>
+                            <p class="text-sm font-medium text-gray-900">${new Date(match.found.created_at).toLocaleDateString()}</p>
+                        </div>
+                    </div>
 
-      <!-- Text -->
-      <div class="space-y-1 mb-4 px-5">
-        <p class="text-xs font-medium text-emerald-500">${match.lost.brand ?? "Brand"}</p>
-        <h3 class="font-serif text-lg font-semibold text-gray-900 leading-snug">
-          ${match.lost.item_type ?? "Item Match"}
-        </h3>
-        <p class="text-[11px] text-gray-500">
-          Matched on: ${new Date(match.found.created_at).toLocaleDateString()}
-        </p>
-      </div>
-
-      <!-- Bottom -->
-      <div class="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 px-5 pb-6">
-        <div>
-          <p class="text-[11px] text-gray-400">Color</p>
-          <p class="text-sm font-medium text-gray-900">${match.lost.color}</p>
-        </div>
-        <button onclick="openMatch(${JSON.stringify(match).replace(/"/g,'&quot;')})"
-          class="btn-view px-6 py-2.5 text-sm font-medium border-2 border-gray-900 text-gray-900 rounded-full hover:bg-gray-900 hover:text-white transition">
-          View Details
-        </button>
-      </div>
-
-    </div>
-  `;
-}
-
-
-
-
-// ===================== RENDER COMPARISON CARD =====================
-function renderComparisonCard(match) {
-  return `
-    <div class="p-8 bg-white">
-      <div class="mb-6 flex items-center justify-between">
-        <div>
-          <h3 class="font-serif text-2xl font-bold text-gray-900">Match Details</h3>
-          <p class="text-gray-600 mt-1">
-            Similarity Score:
-            <span class="font-semibold text-gray-900">
-              ${Math.round(match.similarity_score * 100)}%
-            </span>
-          </p>
-        </div>
-        <div class="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
-          <span class="text-2xl font-bold text-green-600">
-            ${Math.round(match.similarity_score * 100)}%
-          </span>
-        </div>
-      </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <!-- Found Item -->
-        <div class="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all">
-          <div class="flex items-center mb-4">
-            <div class="h-10 w-10 rounded-full bg-green-600 flex items-center justify-center mr-3">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
+                    <div class="mt-auto pt-4 border-t border-gray-50">
+                        <button class="btn-view w-full group relative flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
+                            View Analysis
+                            <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <h4 class="font-serif text-lg font-semibold text-gray-900">Found Item</h4>
-          </div>
-          <img src="http://127.0.0.1:8000/${match.found.image_path}" class="w-full h-40 object-cover rounded-lg mb-4 border border-gray-300">
-          <div class="space-y-2">
-            <p class="text-sm text-gray-700"><span class="font-semibold">Color:</span> ${match.found.color}</p>
-            <p class="text-sm text-gray-700"><span class="font-semibold">Brand:</span> ${match.found.brand}</p>
-            <p class="text-sm text-gray-700"><span class="font-semibold">Found At:</span> ${match.found.lost_location || "N/A"}</p>
-            <p class="text-sm text-gray-700"><span class="font-semibold">Date:</span> ${new Date(match.found.created_at).toLocaleDateString()}</p>
-          </div>
-        </div>
+        `;
+    }
 
-        <!-- Lost Item -->
-        <div class="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all">
-          <div class="flex items-center mb-4">
-            <div class="h-10 w-10 rounded-full bg-gray-900 flex items-center justify-center mr-3">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
+    // ===================== RENDER COMPARISON CARD (MODAL) =====================
+    
+    function renderComparisonCard(match) {
+        const score = Math.round(match.similarity_score * 100);
+        
+        // Dynamic Status Banner
+        let bannerColor = "bg-gray-50 border-gray-200 text-gray-800";
+        let bannerIcon = "fa-info-circle";
+        let bannerTitle = "Status Unknown";
+        let bannerDesc = "Status is pending.";
+
+        if(match.status === 'APPROVED') {
+            bannerColor = "bg-green-50 border-green-200 text-green-800";
+            bannerIcon = "fa-check-circle";
+            bannerTitle = "Match Approved";
+            bannerDesc = "This match has been verified. The guest has been notified.";
+        } else if(match.status === 'REJECTED') {
+            bannerColor = "bg-red-50 border-red-200 text-red-800";
+            bannerIcon = "fa-times-circle";
+            bannerTitle = "Match Rejected";
+            bannerDesc = "This match was marked as incorrect.";
+        } else if(match.status === 'PENDING') {
+            bannerColor = "bg-yellow-50 border-yellow-200 text-yellow-800";
+            bannerIcon = "fa-hourglass-half";
+            bannerTitle = "Verification Pending";
+            bannerDesc = "Please review the details below and approve if these items match.";
+        }
+
+        const foundImg = match.found.image_path ? `http://127.0.0.1:8000/${match.found.image_path}` : 'https://via.placeholder.com/300';
+        const lostImg = match.lost.image_path ? `http://127.0.0.1:8000/${match.lost.image_path}` : 'https://via.placeholder.com/300';
+
+        return `
+            <div class="flex flex-col h-full max-h-[90vh]">
+                <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <div>
+                        <h2 class="text-2xl font-serif font-bold text-gray-900">Match Analysis</h2>
+                        <p class="text-sm text-gray-500 mt-1">Ref ID: #${match.match_id}</p>
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <div class="flex items-center gap-2">
+                             <div class="w-12 h-12 rounded-full ${score > 85 ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'} flex items-center justify-center font-bold text-sm">
+                                ${score}%
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs font-bold text-gray-400 uppercase tracking-wide">Confidence</p>
+                                <p class="text-sm font-bold text-gray-900">AI Similarity Score</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-y-auto p-8 bg-white">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 relative">
+                        
+                        <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex w-10 h-10 bg-white rounded-full items-center justify-center font-bold text-gray-300 shadow-md border border-gray-100 text-xs">
+                            VS
+                        </div>
+
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group hover:border-green-200 transition-colors">
+                            <div class="bg-green-50/50 px-4 py-3 border-b border-green-100 flex items-center gap-2">
+                                <i class="fas fa-search-location text-green-600"></i>
+                                <span class="font-bold text-green-900 text-sm uppercase tracking-wide">Found Item (Inventory)</span>
+                            </div>
+                            <div class="h-64 overflow-hidden bg-gray-100 relative">
+                                <img src="${foundImg}" class="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500">
+                            </div>
+                            <div class="p-5 space-y-3">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><p class="text-xs text-gray-400 font-bold uppercase">Brand</p><p class="text-sm font-medium">${match.found.brand || "--"}</p></div>
+                                    <div><p class="text-xs text-gray-400 font-bold uppercase">Color</p><p class="text-sm font-medium">${match.found.color || "--"}</p></div>
+                                    <div class="col-span-2"><p class="text-xs text-gray-400 font-bold uppercase">Location Found</p><p class="text-sm font-medium">${match.found.lost_location || "Unknown"}</p></div>
+                                    <div class="col-span-2"><p class="text-xs text-gray-400 font-bold uppercase">Date</p><p class="text-sm font-medium">${new Date(match.found.created_at).toLocaleString()}</p></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group hover:border-gray-300 transition-colors">
+                            <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                                <i class="fas fa-user text-gray-600"></i>
+                                <span class="font-bold text-gray-900 text-sm uppercase tracking-wide">Guest Report (Lost)</span>
+                            </div>
+                            <div class="h-64 overflow-hidden bg-gray-100 relative">
+                                <img src="${lostImg}" class="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500">
+                            </div>
+                            <div class="p-5 space-y-3">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><p class="text-xs text-gray-400 font-bold uppercase">Brand</p><p class="text-sm font-medium">${match.lost.brand || "--"}</p></div>
+                                    <div><p class="text-xs text-gray-400 font-bold uppercase">Color</p><p class="text-sm font-medium">${match.lost.color || "--"}</p></div>
+                                    <div class="col-span-2"><p class="text-xs text-gray-400 font-bold uppercase">Last Seen</p><p class="text-sm font-medium">${match.lost.lost_location || "Unknown"}</p></div>
+                                    <div class="col-span-2"><p class="text-xs text-gray-400 font-bold uppercase">Date Reported</p><p class="text-sm font-medium">${new Date(match.lost.created_at).toLocaleString()}</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="${bannerColor} border rounded-xl p-4 flex gap-4 items-start shadow-sm">
+                        <div class="mt-0.5"><i class="fas ${bannerIcon} text-lg"></i></div>
+                        <div>
+                            <h4 class="font-bold text-sm uppercase tracking-wide">${bannerTitle}</h4>
+                            <p class="text-sm opacity-90 mt-1">${bannerDesc}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 px-8 py-5 border-t border-gray-100 flex flex-row-reverse gap-3">
+                    <button onclick="closeMatch()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition shadow-sm">
+                        Close
+                    </button>
+
+                    ${(currentUser?.role_id === 2 && match.status === "PENDING") ? `
+                        <button onclick="approveMatch(${match.match_id})" class="px-5 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition shadow-lg shadow-green-200 flex items-center gap-2">
+                            <i class="fas fa-check"></i> Confirm Match
+                        </button>
+                        <button onclick="rejectMatch(${match.match_id})" class="px-5 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition shadow-lg shadow-red-200 flex items-center gap-2">
+                            <i class="fas fa-times"></i> Reject
+                        </button>
+                    ` : ""}
+                </div>
             </div>
-            <h4 class="font-serif text-lg font-semibold text-gray-900">Lost Item</h4>
-          </div>
-          <img src="http://127.0.0.1:8000/${match.lost.image_path}" class="w-full h-40 object-cover rounded-lg mb-4 border border-gray-300">
-          <div class="space-y-2">
-            <p class="text-sm text-gray-700"><span class="font-semibold">Color:</span> ${match.lost.color}</p>
-            <p class="text-sm text-gray-700"><span class="font-semibold">Brand:</span> ${match.lost.brand}</p>
-            <p class="text-sm text-gray-700"><span class="font-semibold">Last Seen:</span> ${match.lost.lost_location || "N/A"}</p>
-            <p class="text-sm text-gray-700"><span class="font-semibold">Date:</span> ${new Date(match.lost.created_at).toLocaleDateString()}</p>
-          </div>
-        </div>
-      </div>
+        `;
+    }
 
-      <!-- STATUS INFO BOX -->
-      <div class="${
-        match.status === 'RECLAIMED'
-          ? 'bg-yellow-50 border-yellow-200'
-          : match.status === 'REJECTED'
-          ? 'bg-red-50 border-red-200'
-          : match.status === 'APPROVED'
-          ? 'bg-green-50 border-green-200'
-          : 'bg-gray-50 border-gray-200'
-      } border rounded-lg p-4 mb-6">
-        <div class="flex items-start">
-          <div>
-            <p class="text-sm font-semibold ${
-              match.status === 'RECLAIMED'
-                ? 'text-yellow-900'
-                : match.status === 'REJECTED'
-                ? 'text-red-900'
-                : match.status === 'APPROVED'
-                ? 'text-green-900'
-                : 'text-gray-900'
-            }">
-              ${match.status.toUpperCase()}
-            </p>
-            <p class="text-sm mt-1 ${
-              match.status === 'RECLAIMED'
-                ? 'text-yellow-700'
-                : match.status === 'REJECTED'
-                ? 'text-red-700'
-                : match.status === 'APPROVED'
-                ? 'text-green-700'
-                : 'text-gray-700'
-            }">
-              ${
-                match.status === 'RECLAIMED'
-                  ? 'This item has been successfully claimed.'
-                  : match.status === 'REJECTED'
-                  ? 'This match was reviewed and rejected.'
-                  : match.status === 'APPROVED'
-                  ? 'This match has been verified and approved.'
-                  : 'This match is pending verification.'
-              }
-            </p>
-          </div>
-        </div>
-      </div>
+    // ===================== RENDER PAGE =====================
+    function renderMatchesPage(page = 1) {
+        container.innerHTML = "";
+        currentPage = page;
 
-      <div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
-        <button onclick="closeMatch()"
-          class="px-6 py-2.5 border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-all">
-          Close
-        </button>
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        const pageItems = matchesData.slice(start, end);
 
-        <!-- ADMIN ONLY -->
-        ${currentUser?.role_id === 2 && match.status.toUpperCase() === "PENDING" ? `
-          <button onclick="approveMatch(${match.match_id})"
-            class="px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-all">
-            Approve
-          </button>
-          <button onclick="rejectMatch(${match.match_id})"
-            class="px-6 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-all">
-            Reject
-          </button>
-        ` : ""}
-      </div>
-    </div>
-  `;
-}
+        if (pageItems.length === 0) {
+            container.innerHTML = `
+                <div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+                   <div class="bg-gray-100 rounded-full h-20 w-20 flex items-center justify-center mb-4">
+                        <i class="fas fa-robot text-gray-400 text-3xl"></i>
+                   </div>
+                   <h3 class="text-xl font-bold text-gray-900">No Matches Found</h3>
+                   <p class="text-gray-500 mt-2">The AI hasn't detected any matches yet.</p>
+                </div>
+            `;
+            return;
+        }
 
+        pageItems.forEach(match => {
+            const card = document.createElement("div");
+            card.className = "item-card bg-white rounded-[24px] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1";
+            card.innerHTML = renderSummaryCard(match);
+            container.appendChild(card);
 
-// ===================== RENDER PAGE WITH PAGINATION =====================
-function renderMatchesPage(page = 1) {
-  container.innerHTML = "";
-  currentPage = page;
+            const btn = card.querySelector(".btn-view");
+            if (btn) btn.onclick = () => window.openMatch(match);
+        });
 
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const pageItems = matchesData.slice(start, end);
+        renderPagination();
+    }
 
-  pageItems.forEach(match => {
-    const card = document.createElement("div");
-    card.className = "item-card bg-white rounded-[32px] shadow-md border border-gray-100 px-0 flex flex-col";
+    // ===================== PAGINATION UI =====================
+    function renderPagination() {
+        let pagination = document.getElementById("pagination");
+        const totalPages = Math.ceil(totalMatches / pageSize);
+        pagination.innerHTML = "";
 
-    card.innerHTML = renderSummaryCard(match);
-    container.appendChild(card);
+        if (totalPages <= 1) return;
 
-    const btn = card.querySelector(".btn-view");
-    if (btn) btn.addEventListener("click", () => openMatch(match));
-  });
+        // Previous
+        const prevBtn = document.createElement("button");
+        prevBtn.innerHTML = `<i class="fas fa-chevron-left"></i>`;
+        prevBtn.className = `w-10 h-10 flex items-center justify-center rounded-lg border ${currentPage === 1 ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition"}`;
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.onclick = () => { if (currentPage > 1) renderMatchesPage(currentPage - 1); };
+        pagination.appendChild(prevBtn);
 
-  renderPagination();
-}
+        // Numbers
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement("button");
+            btn.textContent = i;
+            btn.className = `w-10 h-10 flex items-center justify-center rounded-lg border text-sm font-bold ${i === currentPage ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition"}`;
+            btn.onclick = () => renderMatchesPage(i);
+            pagination.appendChild(btn);
+        }
 
-// ===================== PAGINATION UI =====================
-function renderPagination() {
-  let pagination = document.getElementById("pagination");
-  if (!pagination) {
-    pagination = document.createElement("div");
-    pagination.id = "pagination";
-    pagination.className = "flex justify-center gap-2 mt-8";
-    container.parentNode.appendChild(pagination);
-  }
+        // Next
+        const nextBtn = document.createElement("button");
+        nextBtn.innerHTML = `<i class="fas fa-chevron-right"></i>`;
+        nextBtn.className = `w-10 h-10 flex items-center justify-center rounded-lg border ${currentPage === totalPages ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition"}`;
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.onclick = () => { if (currentPage < totalPages) renderMatchesPage(currentPage + 1); };
+        pagination.appendChild(nextBtn);
+    }
 
-  const totalPages = Math.ceil(totalMatches / pageSize);
-  pagination.innerHTML = "";
+    // ===================== OVERLAY LOGIC (GLOBAL EXPORTS) =====================
+    window.openMatch = function(match) {
+        overlayContent.innerHTML = renderComparisonCard(match);
+        overlay.classList.remove("hidden");
+        
+        // Trigger Animation
+        setTimeout(() => {
+            modalBackdrop.classList.remove("opacity-0");
+            modalPanel.classList.remove("scale-95", "opacity-0");
+            modalPanel.classList.add("scale-100", "opacity-100");
+        }, 10);
+    };
 
-  // Previous button
-  const prevBtn = document.createElement("button");
-  prevBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>`;
-  prevBtn.className = `px-3 py-2 rounded-lg ${currentPage === 1 ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white"} transition-all duration-200`;
-  prevBtn.disabled = currentPage === 1;
-  prevBtn.addEventListener("click", () => { if (currentPage > 1) renderMatchesPage(currentPage - 1); });
-  pagination.appendChild(prevBtn);
+    window.closeMatch = function() {
+        modalBackdrop.classList.add("opacity-0");
+        modalPanel.classList.remove("scale-100", "opacity-100");
+        modalPanel.classList.add("scale-95", "opacity-0");
+        
+        setTimeout(() => {
+            overlay.classList.add("hidden");
+        }, 300); // Wait for transition
+    };
 
-  // Page numbers
-  for (let i = 1; i <= totalPages; i++) {
-    const btn = document.createElement("button");
-    btn.textContent = i;
-    btn.className = `px-4 py-2 rounded-lg font-medium ${i === currentPage ? "bg-gray-900 text-white" : "bg-white border-2 border-gray-300 text-gray-900 hover:border-gray-900"} transition-all duration-200`;
-    btn.addEventListener("click", () => renderMatchesPage(i));
-    pagination.appendChild(btn);
-  }
+    // ===================== ADMIN ACTIONS =====================
+    window.approveMatch = async function(matchId) {
+        if(!confirm("Are you sure you want to approve this match? This will notify the guest.")) return;
+        
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`http://127.0.0.1:8000/admin/admin/approve-match/${matchId}`, {
+                method: "POST",
+                headers: { Authorization: "Bearer " + token }
+            });
+            if (!res.ok) throw new Error("Approve failed");
+            
+            alert("Match approved successfully!");
+            window.closeMatch();
+            fetchMatches(currentPage);
+        } catch (err) {
+            console.error(err);
+            alert("Error approving match");
+        }
+    };
 
-  // Next button
-  const nextBtn = document.createElement("button");
-  nextBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
-  nextBtn.className = `px-3 py-2 rounded-lg ${currentPage === totalPages ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white"} transition-all duration-200`;
-  nextBtn.disabled = currentPage === totalPages;
-  nextBtn.addEventListener("click", () => { if (currentPage < totalPages) renderMatchesPage(currentPage + 1); });
-  pagination.appendChild(nextBtn);
-}
+    window.rejectMatch = async function(matchId) {
+        if(!confirm("Are you sure you want to reject this match?")) return;
 
-// ===================== OVERLAY FUNCTIONS =====================
-window.openMatch = function(match) {
-  overlayContent.innerHTML = renderComparisonCard(match);
-  overlay.classList.remove("hidden");
-};
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`http://127.0.0.1:8000/admin/admin/reject-match/${matchId}`, {
+                method: "POST",
+                headers: { Authorization: "Bearer " + token }
+            });
+            if (!res.ok) throw new Error("Reject failed");
+            
+            alert("Match rejected.");
+            window.closeMatch();
+            fetchMatches(currentPage);
+        } catch (err) {
+            console.error(err);
+            alert("Error rejecting match");
+        }
+    };
 
-window.closeMatch = function() {
-  overlay.classList.add("hidden");
-};
-
-
-
-// ===================== ADMIN APPROVE MATCH =====================
-window.approveMatch = async function(matchId) {
-  try {
-    const token = localStorage.getItem("token");
-
-    const res = await fetch(`http://127.0.0.1:8000/admin/admin/approve-match/${matchId}`, {
-      method: "POST",
-      headers: { Authorization: "Bearer " + token }
-    });
-
-    if (!res.ok) throw new Error("Approve failed");
-
-    alert("Match approved");
-    closeMatch();
-    fetchMatches(currentPage);
-  } catch (err) {
-    console.error(err);
-    alert("Error approving match");
-  }
-};
-
-// ===================== ADMIN REJECT MATCH =====================
-window.rejectMatch = async function(matchId) {
-  try {
-    const token = localStorage.getItem("token");
-
-    const res = await fetch(`http://127.0.0.1:8000/admin/admin/reject-match/${matchId}`, {
-      method: "POST",
-      headers: { Authorization: "Bearer " + token }
-    });
-
-    if (!res.ok) throw new Error("Reject failed");
-
-    alert("Match rejected");
-    closeMatch();
-    fetchMatches(currentPage);
-  } catch (err) {
-    console.error(err);
-    alert("Error rejecting match");
-  }
-};
-
-
-// ===================== INITIAL FETCH =====================
-(async () => {
-  await fetchCurrentUser();
-  fetchMatches(currentPage);
 })();
-

@@ -1,8 +1,8 @@
 
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body,status
 from sqlalchemy.orm import Session
 from datetime import timedelta
-
+from datetime import datetime
 import crud, models, schemas
 from database import get_db
 from auth import create_access_token, decode_access_token
@@ -33,13 +33,28 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login_user(user: schemas.UserLogin, db: Session = Depends(get_db)):
+    # 1. Find User
     db_user = db.query(models.User).filter(
         models.User.email == user.email
     ).first()
 
+    # 2. Verify Credentials
     if not db_user or not crud.verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    # 3. 🛑 CHECK SUSPENSION (New Logic)
+    # Ensure your User model has 'is_active'. If not, see the note below.
+    if not db_user.is_active: 
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account suspended. Please contact your administrator."
+        )
+
+    # 4. ✅ Update Last Login
+    db_user.last_login = datetime.utcnow()
+    db.commit()
+
+    # 5. Generate Token
     token = create_access_token({
         "sub": str(db_user.user_id),
         "business_id": db_user.business_id,

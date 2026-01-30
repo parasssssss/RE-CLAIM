@@ -39,18 +39,36 @@ def get_ai_matches(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # 1. Start the query by joining Match -> Found Item
+    # We join on 'found_item_id' because the Business "possesses" the found item.
     matches_query = db.query(models.Match).join(
         models.Item, models.Match.found_item_id == models.Item.item_id
     )
 
-    if current_user.role_id == 4:  # normal user
-        lost_items = db.query(models.Item.item_id).filter(
+    # 🛑 LOGIC FIX START 🛑
+    
+    # CASE A: Business Admin (Role 2) or Staff (Role 3)
+    # They should ONLY see matches where the found item belongs to THEIR Business.
+    if current_user.role_id in [2, 3]: 
+        if not current_user.business_id:
+            return [] # Safety check
+            
+        matches_query = matches_query.filter(
+            models.Item.business_id == current_user.business_id
+        )
+
+    # CASE B: Normal User (Role 4)
+    # They should see matches where the LOST item belongs to THEM.
+    elif current_user.role_id == 4:
+        user_lost_items = db.query(models.Item.item_id).filter(
             models.Item.user_id == current_user.user_id
         ).subquery()
-        matches_query = db.query(models.Match).filter(models.Match.lost_item_id.in_(lost_items))
-
-    elif current_user.role_id == 3:  # staff
-        matches_query = matches_query.filter(models.Item.user_id == current_user.user_id)
+        
+        matches_query = matches_query.filter(
+            models.Match.lost_item_id.in_(user_lost_items)
+        )
+        
+    # 🛑 LOGIC FIX END 🛑
 
     matches = matches_query.all()
 
@@ -59,7 +77,9 @@ def get_ai_matches(
         lost_item = db.query(models.Item).filter(models.Item.item_id == match.lost_item_id).first()
         found_item = db.query(models.Item).filter(models.Item.item_id == match.found_item_id).first()
 
-        # ✅ Create notification only if it doesn't exist already
+        # ✅ Notification Logic (Kept as is)
+        # Note: Ideally, this should be in a background task, not a GET request, 
+        # but leaving it here to preserve your existing flow.
         existing_notif = db.query(models.Notification).filter_by(
             user_id=current_user.user_id,
             match_id=match.match_id,
@@ -67,7 +87,7 @@ def get_ai_matches(
         ).first()
 
         if not existing_notif:
-            from email_utils import notify_match_found
+            from email_utils import notify_match_found # Import here to avoid circular dependency
             notify_match_found(db, current_user, lost_item, match)
 
         result.append({

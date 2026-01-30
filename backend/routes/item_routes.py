@@ -9,11 +9,13 @@ import models, schemas, crud
 from database import get_db
 from auth import get_current_user
 from utils.ai_match_utils import run_ai_match_for_new_item
+from utils.ai_match import generate_image_embedding,validate_image_content
 from email_utils import notify_item_recovered
 
+
 router = APIRouter(prefix="/items", tags=["Items"])
-
-
+ 
+# Report Item Endpoint
 
 @router.post("/report-item")
 def report_item(
@@ -26,18 +28,44 @@ def report_item(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # 1. Basic Validation
+    if not item_type.strip() or not description.strip():
+        raise HTTPException(status_code=400, detail="Item Type and Description are required.")
+
     status = "FOUND" if current_user.role_id in [2, 3] else "LOST"
 
     image_path = None
     image_mime = None
+    image_embedding = None
 
     if image:
+        # --- A. Save Image Temporarily ---
+        # We must save it to disk first so the AI can read it
         os.makedirs("uploads/items", exist_ok=True)
         image_path = f"uploads/items/{image.filename}"
         image_mime = image.content_type
+        
         with open(image_path, "wb") as f:
             f.write(image.file.read())
 
+        # --- B. 🛑 STRICT AI CHECK ---
+        # We check BEFORE creating the item in the DB
+        is_valid, ai_msg = validate_image_content(image_path, item_type)
+        
+        if not is_valid:
+            # ❌ MATCH FAILED! 
+            # 1. Delete the bad image so it doesn't clutter your server
+            if os.path.exists(image_path):
+                os.remove(image_path)
+            
+            # 2. Stop everything and return an error
+            print(f"🚫 BLOCKING REPORT: {ai_msg}")
+            raise HTTPException(status_code=400, detail=ai_msg)
+
+        # --- C. If we survived the check, generate embedding ---
+        image_embedding = generate_image_embedding(image_path)
+
+    # 2. Create Item in DB (Only happens if AI said "Yes")
     item = crud.create_item(
         db=db,
         user_id=current_user.user_id,
@@ -49,9 +77,11 @@ def report_item(
         image_path=image_path,
         lost_location=lost_at_location,
         image_mime=image_mime,
-        status=status
+        status=status,
+        image_embedding=image_embedding
     )
 
+    # 3. Run Matching
     matches = run_ai_match_for_new_item(item, db)
 
     return {
@@ -60,16 +90,29 @@ def report_item(
         "ai_matches": matches
     }
 
-
-# Get Reports Endpoint
+# Get My Items Endpoint
 @router.get("/my-items", response_model=List[schemas.ItemResponse])
 def get_my_items(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    items = db.query(models.Item).filter(models.Item.user_id == current_user.user_id).all()
-    return items
+    # 1. If Admin (2)  Fetch ALL items for their business
+    if current_user.role_id in [2]:
+        if current_user.business_id:
+            items = db.query(models.Item).filter(
+                models.Item.business_id == current_user.business_id
+            ).order_by(models.Item.created_at.desc()).all()
+        else:
+            # Fallback: If admin has no business_id, show empty or handle error
+            items = []
+            
+    # 2. If Normal User & staff (4,3): Fetch ONLY their own items
+    else:
+        items = db.query(models.Item).filter(
+            models.Item.user_id == current_user.user_id
+        ).order_by(models.Item.created_at.desc()).all()
 
+    return items
 
 
 # Delete Report Endpoint

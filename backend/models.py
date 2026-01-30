@@ -1,6 +1,8 @@
+import datetime
 from sqlalchemy import Column, Float, Integer, String, ForeignKey, DateTime,Text,ForeignKey, Date, TIMESTAMP,Boolean
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from sqlalchemy.types import JSON
 from database import Base
 
 class Role(Base):
@@ -30,6 +32,9 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     business_id = Column(Integer, ForeignKey("businesses.business_id"))
     role_id = Column(Integer, ForeignKey("roles.role_id"))
+    # ✅ NEW COLUMNS ADDED
+    is_active = Column(Boolean, default=True)  # To suspend staff without deleting history
+    last_login = Column(DateTime(timezone=True), nullable=True) # To see who is active
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -72,6 +77,7 @@ class Item(Base):
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
     lost_location = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)  # True = active, False = inactive
+    image_embedding = Column(JSON, nullable=True)
 
     user = relationship("User", back_populates="items")
     business = relationship("Business", back_populates="items") 
@@ -94,6 +100,7 @@ class BusinessRegistration(Base):
 
     status = Column(String, default="PENDING")  
     # PENDING | PAID | COMPLETED | EXPIRED
+    selected_plan_id = Column(Integer, ForeignKey("subscription_plans.plan_id"), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -103,6 +110,8 @@ class Payment(Base):
 
     payment_id = Column(Integer, primary_key=True)
     registration_token = Column(String, index=True)
+
+    business_id = Column(Integer, ForeignKey("businesses.business_id"), nullable=True)
     razorpay_order_id = Column(String)
     razorpay_payment_id = Column(String)
     amount = Column(Integer)
@@ -154,6 +163,46 @@ class Notification(Base):
     user = relationship("User")
     item = relationship("Item")
     match = relationship("Match")
+
+
+# 1. Stores the Plan Types (Free, Pro, Enterprise)
+class SubscriptionPlan(Base):
+    __tablename__ = "subscription_plans"
+
+    plan_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)        # e.g., "Gold", "Platinum"
+    description = Column(String, nullable=True)
+    price = Column(Float, nullable=False)        # e.g., 1499.00
+    duration_days = Column(Integer, default=30)  # e.g., 30 for monthly, 365 for yearly
+    features = Column(Text, nullable=True)       # Store as comma-separated string: "AI Matching,Priority Support"
+    is_active = Column(Boolean, default=True)
+
+
+# 2. Tracks which business has which plan
+class BusinessSubscription(Base):
+    __tablename__ = "business_subscriptions"
+
+    subscription_id = Column(Integer, primary_key=True, index=True)
+    business_id = Column(Integer, ForeignKey("businesses.business_id"))
+    plan_id = Column(Integer, ForeignKey("subscription_plans.plan_id"))
+    
+    start_date = Column(DateTime, default=datetime.datetime.utcnow)
+    end_date = Column(DateTime)
+    status = Column(String, default="ACTIVE") # ACTIVE, EXPIRED, CANCELLED
+    payment_id = Column(String, nullable=True) # Razorpay Payment ID
+
+    business = relationship("Business", backref="subscription")
+    plan = relationship("SubscriptionPlan")
+
+
+
+    
+       
+    
+
+
+
+
 
 
 

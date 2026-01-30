@@ -32,11 +32,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
       
       if (data.count > 0) {
-        badge.textContent = data.count;
-        badge.classList.remove("hidden");
-        badge.classList.add("animate-bounce");
-        setTimeout(() => badge.classList.remove("animate-bounce"), 1000);
-      } else {
+  // ✅ Re-inject the HTML structure to keep the styling
+  badge.innerHTML = `
+    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+    <span class="relative inline-flex rounded-full h-5 w-5 bg-gradient-to-r from-red-500 to-pink-600 text-[10px] text-white items-center justify-center font-bold shadow-md ring-2 ring-white">
+      ${data.count}
+    </span>
+  `;
+  badge.classList.remove("hidden");
+  // ...
+} else {
         badge.textContent = "";
         badge.classList.add("hidden");
       }

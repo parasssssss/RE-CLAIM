@@ -1,110 +1,203 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from sqlalchemy import func
+from sqlalchemy import func, desc
 from database import get_db
-from models import User, Item, Match
+from models import User, Item, Match, Notification
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import func, desc, or_
+from datetime import datetime, timedelta
+from typing import List
+from auth import get_current_user
+import models, auth
+from database import get_db
 
 router = APIRouter()
 
 @router.get("/api/dashboard/{user_id}")
 def get_dashboard(user_id: int, db: Session = Depends(get_db)):
 
-    # --- User ---
+    # --- User Check ---
     user = db.query(User).filter(User.user_id == user_id).first()
     if not user:
         return {"error": "User not found"}
 
     now = datetime.utcnow()
-
-    # --- Yesterday ---
+    
+    # --- Time Ranges ---
     yesterday = now - timedelta(days=1)
     y_start = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
     y_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
+    
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    items_yesterday = db.query(Item).filter(
-        Item.user_id == user_id,
-        Item.created_at >= y_start,
-        Item.created_at <= y_end
+    # --- Stats: Overview ---
+    # Total active reports
+    active_reports = db.query(Item).filter(
+        Item.user_id == user_id, 
+        Item.status.in_(["LOST", "PENDING"])
     ).count()
 
-    matches_yesterday = db.query(Match).join(Item, Match.lost_item_id == Item.item_id).filter(
-        Item.user_id == user_id,
-        Match.created_at >= y_start,
-        Match.created_at <= y_end
+    # Total items recovered (All time)
+    total_recovered = db.query(Item).filter(
+        Item.user_id == user_id, 
+        Item.status == "RECLAIMED"
     ).count()
 
-    items_recovered_yesterday = db.query(Item).filter(
+    # Matches found today
+    matches_today = db.query(Match).join(Item, Match.lost_item_id == Item.item_id).filter(
         Item.user_id == user_id,
-        Item.status == "RECLAIMED",
-        Item.updated_at >= y_start,
-        Item.updated_at <= y_end
+        Match.created_at >= today_start
     ).count()
 
-    # --- Today ---
-    t_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_items = db.query(Item).filter(Item.user_id == user_id, Item.created_at >= t_start).all()
-    today_reports_count = len(today_items)
+    # --- Recent Data (For Lists) ---
+    
+    # 1. Recent Matches (Top 5)
+    recent_matches_query = db.query(Match).join(Item, Match.lost_item_id == Item.item_id)\
+        .filter(Item.user_id == user_id)\
+        .order_by(Match.created_at.desc())\
+        .limit(5).all()
 
-    today_matches_count = db.query(Match).join(Item, Match.lost_item_id == Item.item_id).filter(
-        Item.user_id == user_id,
-        Match.created_at >= t_start
-    ).count()
+    recent_matches_data = []
+    for m in recent_matches_query:
+        # Fetch the found item details for context
+        found_item = db.query(Item).filter(Item.item_id == m.found_item_id).first()
+        recent_matches_data.append({
+            "match_id": m.match_id,
+            "similarity": m.similarity_score,
+            "status": m.status,
+            "item_name": found_item.item_type if found_item else "Unknown Item",
+            "date": m.created_at.strftime("%b %d")
+        })
 
-    today_recovered_count = db.query(Item).filter(
-        Item.user_id == user_id,
-        Item.status == "RECLAIMED",
-        Item.updated_at >= t_start
-    ).count()
+    # 2. Recent Reports (Top 5)
+    recent_reports = db.query(Item).filter(
+        Item.user_id == user_id
+    ).order_by(Item.created_at.desc()).limit(5).all()
 
-    # --- Monthly stats (unchanged) ---
-    start_month = datetime(now.year, now.month, 1)
-    monthly_recoveries = db.query(Item).filter(
-        Item.user_id == user_id,
-        Item.status == "RECLAIMED",
-        Item.updated_at >= start_month
-    ).count()
-
-    total_items_month = db.query(Item).filter(
-        Item.user_id == user_id,
-        Item.created_at >= start_month
-    ).count()
-
-    recovery_rate = round((monthly_recoveries / total_items_month * 100) if total_items_month else 0, 2)
-
-    # --- Categories ---
-    categories_query = db.query(Item.item_type, func.count(Item.item_id)).filter(Item.user_id == user_id).group_by(Item.item_type).all()
-    categories = [{"category": c[0], "percentage": round(c[1]/total_items_month*100,2)} for c in categories_query]
-
-    # --- Activity chart (last 7 days) ---
-    activity_labels = []
+    # --- Activity Chart Data (Last 7 Days) ---
     activity_data = []
-    for i in range(7):
-        day = now - timedelta(days=6-i)
-        d_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
-        d_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
-        day_reported = db.query(Item).filter(Item.user_id==user_id, Item.created_at>=d_start, Item.created_at<=d_end).count()
-        day_recovered = db.query(Item).filter(Item.user_id==user_id, Item.status=="RECLAIMED", Item.updated_at>=d_start, Item.updated_at<=d_end).count()
-        activity_labels.append(day.strftime("%b %d"))
-        activity_data.append({"items_reported": day_reported, "items_recovered": day_recovered})
+    for i in range(6, -1, -1):
+        day = now - timedelta(days=i)
+        d_start = day.replace(hour=0, minute=0, second=0)
+        d_end = day.replace(hour=23, minute=59, second=59)
+        
+        count = db.query(Item).filter(
+            Item.user_id == user_id, 
+            Item.created_at >= d_start, 
+            Item.created_at <= d_end
+        ).count()
+        
+        activity_data.append({
+            "date": day.strftime("%a"), # Mon, Tue
+            "count": count
+        })
 
-    # --- Return JSON ---
     return {
-        "yesterday": {
-            "items_reported": items_yesterday,
-            "matches_found": matches_yesterday,
-            "items_recovered": items_recovered_yesterday
+        "stats": {
+            "active_reports": active_reports,
+            "matches_today": matches_today,
+            "total_recovered": total_recovered
         },
-        "today_reports": [{"item_type": i.item_type, "brand": i.brand, "status": i.status} for i in today_items],
-        "today_stats": {
-            "items_reported": today_reports_count,
-            "matches_found": today_matches_count,
-            "items_recovered": today_recovered_count
-        },
-        "monthly_recoveries": {"count": monthly_recoveries, "change": 4.33},  # keep monthly stats same
-        "recovery_rate": {"current": recovery_rate, "change": -1.03},
-        "categories": categories,
-        "activity_overview": [
-            {"date": activity_labels[i], "items_reported": activity_data[i]["items_reported"], "items_recovered": activity_data[i]["items_recovered"]} for i in range(7)
-        ]
+        "recent_matches": recent_matches_data,
+        "recent_reports": [
+            {
+                "item_id": i.item_id,
+                "name": i.item_type,
+                "status": i.status,
+                "date": i.created_at.strftime("%b %d")
+            } for i in recent_reports
+        ],
+        "activity_chart": activity_data
+    }
+
+
+@router.get("/admin-stats")
+def get_admin_dashboard_stats(
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Security: Ensure only Admin (2) or Staff (3) access this
+    if current_user.role_id not in [2, 3] or not current_user.business_id:
+        return {"error": "Unauthorized"}
+
+    bid = current_user.business_id
+
+    # --- KPI 1: Active "In Custody" Items (Storage) ---
+    # We count items uploaded by this business that are NOT yet returned
+    # Assuming statuses like 'FOUND', 'PENDING' imply they are still in storage.
+    storage_count = db.query(models.Item).filter(
+        models.Item.business_id == bid,
+        models.Item.status == "FOUND"  # Adjust if you use "LOGGED"
+    ).count()
+
+    # --- KPI 2: Pending Match Verifications ---
+    # Matches involving this business's items that are waiting for approval
+    pending_claims = db.query(models.Match).join(
+        models.Item, models.Match.found_item_id == models.Item.item_id
+    ).filter(
+        models.Item.business_id == bid,
+        models.Match.status == "PENDING"
+    ).count()
+
+    # --- KPI 3: Staff Members ---
+    staff_count = db.query(models.User).filter(
+        models.User.business_id == bid,
+        models.User.role_id == 3 
+    ).count()
+
+    # 4. ✅ KPI: Match Rate Calculation
+    # Formula: (Returned Items / Total Items Logged) * 100
+    total_items = db.query(models.Item).filter(models.Item.business_id == bid).count()
+    returned_items = db.query(models.Item).filter(
+        models.Item.business_id == bid, 
+        models.Item.status == "RECLAIMED"
+    ).count()
+
+    match_rate = 0
+    if total_items > 0:
+        match_rate = round((returned_items / total_items) * 100)
+
+    # --- FEED: Recent Activity ---
+    # Using 'created_at' and 'item_type' from your models
+    recent_items = db.query(models.Item).filter(
+        models.Item.business_id == bid
+    ).order_by(models.Item.created_at.desc()).limit(3).all()
+    
+    feed_data = []
+    for item in recent_items:
+        feed_data.append({
+            "type": "ITEM_LOGGED",
+            "text": f"New: {item.item_type}",
+            "subtext": f"Location: {item.lost_location or 'Unknown'}",
+            "time": item.created_at
+        })
+
+    # --- CHART: Last 7 Days Intake ---
+    # Using 'created_at'
+    today = datetime.utcnow().date()
+    chart_labels = []
+    chart_data = []
+    
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        count = db.query(models.Item).filter(
+            models.Item.business_id == bid,
+            func.date(models.Item.created_at) == day
+        ).count()
+        chart_labels.append(day.strftime("%b %d"))
+        chart_data.append(count)
+
+    return {
+        "storage_count": storage_count,
+        "pending_claims": pending_claims,
+        "staff_count": staff_count,
+        "returned_month": returned_items,
+        "feed": feed_data,
+        "chart": {
+            "labels": chart_labels,
+            "data": chart_data
+        }
     }

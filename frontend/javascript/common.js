@@ -49,3 +49,40 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.style.overflow = '';
     }
 });
+
+
+document.addEventListener("DOMContentLoaded", () => {
+    redirectDashboardLink();
+});
+
+function redirectDashboardLink() {
+    const dashboardLink = document.getElementById("sidebar-dashboard-link");
+    const token = localStorage.getItem("token");
+
+    // If the link or token doesn't exist, stop
+    if (!dashboardLink || !token) return;
+
+    try {
+        // 1. Decode the JWT Token
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+
+        const payload = JSON.parse(jsonPayload);
+
+        // 2. Check Role ID (2 = Admin, 3 = Staff)
+        // Adjust 'role_id' if your token uses a different key like 'role' or 'sub'
+        if (payload.role_id === 2) {
+            dashboardLink.href = "dashboard_admin.html";
+        } else {
+            dashboardLink.href = "dashboard_normie.html";
+        }
+
+    } catch (error) {
+        console.error("Error decoding token for sidebar redirect:", error);
+        // Fallback: send to landing if token is corrupt
+        dashboardLink.href = "landing.html";
+    }
+}

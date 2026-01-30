@@ -9,6 +9,7 @@
     <script src="javascript/landing.js" type="module" defer></script>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script src="javascript/onboarding.js"  defer></script>
+    <script src="javascript/pricing.js" defer ></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
         
@@ -479,87 +480,22 @@
 
 
     <!-- New Pricing Section -->
-    <section id="pricing" class="py-24 px-6">
-        <div class="max-w-7xl mx-auto">
-            <div class="text-center mb-16 scroll-reveal">
-                <h2 class="font-serif text-4xl md:text-5xl font-bold mb-4">Simple, Transparent Pricing</h2>
-                <p class="text-xl text-gray-600 max-w-2xl mx-auto">Get full access to all features with our enterprise plan</p>
-            </div>
-            
-            <div class="max-w-md mx-auto scroll-reveal">
-                <div class="pricing-card bg-white p-10 rounded-lg shadow-xl border-2 border-gray-900">
-                    <div class="text-center mb-8">
-                        <h3 class="font-serif text-3xl font-semibold mb-2">Enterprise Plan</h3>
-                        <p class="text-gray-600">Complete solution for premium establishments</p>
-                    </div>
-                    
-                    <div class="text-center mb-8">
-                        <div class="flex justify-center items-baseline">
-                            <span class="text-6xl font-bold text-gray-900">₹1,499</span>
-                            <span class="text-gray-600 ml-2">/month</span>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-2">Billed annually at ₹17,988</p>
-                    </div>
-                    
-                    <div class="mb-10">
-                        <h4 class="font-semibold text-lg mb-4 text-center">Everything included:</h4>
-                        <ul class="space-y-3 text-gray-600">
-                            <li class="flex items-start">
-                                <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                                Unlimited lost & found item entries
-                            </li>
-                            <li class="flex items-start">
-                                <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                                AI-powered intelligent matching
-                            </li>
-                            <li class="flex items-start">
-                                <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                                Unlimited staff accounts
-                            </li>
-                            <li class="flex items-start">
-                                <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                                Advanced analytics dashboard
-                            </li>
-                            <li class="flex items-start">
-                                <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                                24/7 priority support
-                            </li>
-                            <li class="flex items-start">
-                                <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                                Custom branding & white-label
-                            </li>
-                          
-                        </ul>
-                    </div>
-                    
-                    <button id="getStartedBtn" class="w-full btn-primary py-4 text-white font-medium rounded text-lg">
-    Get Started
-</button>
+    <section id="pricing" class="py-20 bg-gray-900 relative overflow-hidden">
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-900/20 via-gray-900 to-gray-900 pointer-events-none"></div>
 
+    <div class="container mx-auto px-6 relative z-10">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl font-serif font-bold text-white mb-4">Transparent <span class="text-gradient">Pricing</span></h2>
+            <p class="text-gray-400 max-w-2xl mx-auto">Choose the perfect plan for your establishment. No hidden fees.</p>
+        </div>
 
-                    
-                    <p class="text-center text-sm text-gray-500 mt-4">No credit card required • Cancel anytime</p>
-                </div>
-                
-                <div class="mt-8 text-center">
-                    <p class="text-gray-600">Need a custom plan for multiple locations?</p>
-                    <a href="#contact" class="text-gray-900 font-semibold hover:text-gray-700 transition">Contact our sales team →</a>
-                </div>
+        <div id="plansContainer" class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            <div class="col-span-3 text-center text-white">
+                <i class="fas fa-spinner fa-spin fa-2x"></i> Loading plans...
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
     <!-- CTA Section -->
     <section class="py-24 bg-gray-900 text-white px-6">
@@ -652,7 +588,7 @@
         <!-- Modal Content -->
         <div class="p-8 sm:p-12">
             <!-- Step 1: Business Info -->
-<div id="step1">
+<div id="step1" class="transition-opacity duration-200 opacity-100">
     <div class="mb-8">
         <h2 class="font-serif text-3xl font-bold text-gray-900 mb-2">Business Information</h2>
         <p class="text-gray-600">Tell us about your establishment</p>
@@ -693,15 +629,15 @@
     
     <div class="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
         <p class="text-sm text-gray-500">Step 1 of 2</p>
-        <button id="nextToStep2" 
-            class="px-8 py-3 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transform hover:scale-105 transition shadow-lg">
+        <button id="nextToStep2" type="button" class="px-8 py-3 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transform hover:scale-105 transition shadow-lg">
             Continue
         </button>
-    </div>
+        
+</div>
 </div>
 
             <!-- Step 2: Admin Info -->
-            <div id="step2" class="hidden">
+            <div id="step2" class="hidden transition-opacity duration-200 opacity-0">
                 <div class="mb-8">
                     <h2 class="font-serif text-3xl font-bold text-gray-900 mb-2">Admin Account</h2>
                     <p class="text-gray-600">Create your administrator credentials</p>

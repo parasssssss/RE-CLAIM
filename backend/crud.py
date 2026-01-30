@@ -71,7 +71,9 @@ def create_item(
     image_path: str,
     lost_location: str = None,
     image_mime: str = None,
-    status: str = "LOST"
+    status: str = "LOST",
+    image_embedding: list = None
+    
 ):
     db_item = models.Item(
         user_id=user_id,
@@ -83,7 +85,8 @@ def create_item(
         image_path=image_path,
         image_mime=image_mime,
         status=status,
-        lost_location=lost_location
+        lost_location=lost_location,
+        image_embedding=image_embedding
     )
     db.add(db_item)
     db.commit()

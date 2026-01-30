@@ -1,352 +1,304 @@
-const container = document.getElementById("reportsContainer");
-const overlay = document.getElementById("matchOverlay");
-const overlayContent = document.getElementById("overlayContent");
+// ✅ IIFE to prevent variable conflicts
+(() => {
+    // State variables
+    let currentPage = 1;
+    const pageSize = 6; 
+    let totalMatches = 0;
+    let matchesData = [];
+    let currentUser = null;
 
-// Pagination state
-let currentPage = 1;
-const pageSize = 6; // Number of matches per page
-let totalMatches = 0;
-let matchesData = [];
-let currentUser = null;
+    // DOM Elements (assigned after load)
+    let container, paginationContainer, overlay, overlayContent, modalBackdrop, modalPanel;
 
-// ===================== FETCH CURRENT USER =====================
-async function fetchCurrentUser() {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("User not authenticated");
+    // ===================== INITIAL LOAD =====================
+    document.addEventListener("DOMContentLoaded", () => {
+        // 1. Assign Elements
+        container = document.getElementById("reportsContainer");
+        paginationContainer = document.getElementById("pagination");
+        overlay = document.getElementById("matchOverlay");
+        overlayContent = document.getElementById("overlayContent");
+        modalBackdrop = document.getElementById("modalBackdrop");
+        modalPanel = document.getElementById("modalPanel");
 
-    const res = await fetch("http://127.0.0.1:8000/users/me", {
-      headers: { "Authorization": "Bearer " + token }
+        // 2. Start Fetching
+        fetchCurrentUser();
+        fetchMatches(currentPage);
     });
 
-    if (!res.ok) throw new Error("Failed to fetch user");
-
-    currentUser = await res.json();
-    console.log("Current User:", currentUser);
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-// ===================== FETCH MATCHES =====================
-async function fetchMatches(page = 1) {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("User not authenticated");
-
-    const res = await fetch("http://127.0.0.1:8000/matches/approved-matches", {
-      headers: { "Authorization": "Bearer " + token }
-    });
-
-    if (!res.ok) throw new Error("Failed to fetch matches");
-
-    const data = await res.json();
-    matchesData = data;
-    totalMatches = data.length;
-    renderMatchesPage(page);
-  } catch (err) {
-    console.error(err);
-    container.innerHTML = `
-      <div class="col-span-full text-center py-12">
-        <svg class="w-16 h-16 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <p class="text-red-600 text-lg font-medium">Error loading matches</p>
-        <p class="text-gray-500 text-sm mt-2">Please try again later</p>
-      </div>
-    `;
-  }
-}
-
-// ===================== RENDER SUMMARY CARD =====================
-// ===================== RENDER SUMMARY CARD =====================
-function renderSummaryCard(match) {
-  const status = match.status.toUpperCase();
-
-  const statusStyles = {
-    APPROVED: "bg-emerald-100 text-emerald-700",
-    PENDING: "bg-yellow-100 text-yellow-700",
-    REJECTED: "bg-red-100 text-red-700"
-  };
-
-  return `
-    <div class="relative">
-
-      <!-- STATUS BADGE (TOP RIGHT) -->
-      <div class="absolute top-4 right-4 z-10">
-        <span class="px-3 py-1 rounded-full text-xs font-semibold ${
-          statusStyles[status] || "bg-gray-100 text-gray-700"
-        }">
-          ${status}
-        </span>
-      </div>
-
-      <!-- Top row: match % -->
-      <div class="mb-4 px-5 pt-5">
-        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
-          ${
-            status === "APPROVED"
-              ? "bg-emerald-50 text-emerald-600"
-              : status === "PENDING"
-              ? "bg-red-50 text-red-600"
-              : "bg-gray-100 text-gray-700"
-          }">
-          ${Math.round(match.similarity_score * 100)}% Match
-        </span>
-      </div>
-
-      <!-- Image -->
-      <div class="relative bg-[#f5f6f8] rounded-[28px] mb-4 overflow-hidden h-52 mx-5">
-        <img
-          src="http://127.0.0.1:8000/${match.found.image_path}"
-          class="w-full h-full object-cover object-center"
-          alt="Found Item"
-        >
-      </div>
-
-      <!-- Text -->
-      <div class="space-y-1 mb-4 px-5">
-        <p class="text-xs font-medium text-emerald-500">
-          ${match.lost.brand ?? "Brand"}
-        </p>
-        <h3 class="font-serif text-lg font-semibold text-gray-900 leading-snug">
-          ${match.lost.item_type ?? "Item Match"}
-        </h3>
-        <p class="text-[11px] text-gray-500">
-          Matched on: ${new Date(match.found.created_at).toLocaleDateString()}
-        </p>
-      </div>
-
-      <!-- Bottom -->
-      <div class="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 px-5 pb-6">
-        <div>
-          <p class="text-[11px] text-gray-400">Color</p>
-          <p class="text-sm font-medium text-gray-900">
-            ${match.lost.color}
-          </p>
-        </div>
-        <button
-          class="view-match-btn px-6 py-2.5 text-sm font-medium border-2 border-gray-900 text-gray-900 rounded-full hover:bg-gray-900 hover:text-white transition">
-          View Details
-        </button>
-      </div>
-
-    </div>
-  `;
-}
-
-
-// ===================== RENDER COMPARISON CARD =====================
-function renderComparisonCard(match) {
-  return `
-    <div class="p-8 bg-white">
-      <div class="mb-6 flex items-center justify-between">
-        <div>
-          <h3 class="font-serif text-2xl font-bold text-gray-900">Approved Match Details</h3>
-          <p class="text-gray-600 mt-1">Similarity Score: <span class="font-semibold text-gray-900">${Math.round(match.similarity_score * 100)}%</span></p>
-        </div>
-        <div class="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
-          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
-        </div>
-      </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <!-- Found Item -->
-        <div class="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all">
-          <div class="flex items-center mb-4">
-            <div class="h-10 w-10 rounded-full bg-green-600 flex items-center justify-center mr-3">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-            </div>
-            <h4 class="font-serif text-lg font-semibold text-gray-900">Found Item</h4>
-          </div>
-          
-          <img src="http://127.0.0.1:8000/${match.found.image_path}" class="w-full h-40 object-cover rounded-lg mb-4 border border-gray-300">
-          
-          <div class="space-y-2">
-            <p class="text-sm text-gray-700"><span class="font-semibold">Color:</span> ${match.found.color}</p>
-            <p class="text-sm text-gray-700"><span class="font-semibold">Brand:</span> ${match.found.brand}</p>
-            <p class="text-sm text-gray-700"><span class="font-semibold">Found At:</span> ${match.found.lost_location || "N/A"}</p>
-            <p class="text-sm text-gray-700"><span class="font-semibold">Date:</span> ${new Date(match.found.created_at).toLocaleDateString()}</p>
-          </div>
-        </div>
-
-        <!-- Lost Item -->
-        <div class="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all">
-          <div class="flex items-center mb-4">
-            <div class="h-10 w-10 rounded-full bg-gray-900 flex items-center justify-center mr-3">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
-            </div>
-            <h4 class="font-serif text-lg font-semibold text-gray-900">Lost Item</h4>
-          </div>
-          
-          <img src="http://127.0.0.1:8000/${match.lost.image_path}" class="w-full h-40 object-cover rounded-lg mb-4 border border-gray-300">
-          
-          <div class="space-y-2">
-            <p class="text-sm text-gray-700"><span class="font-semibold">Color:</span> ${match.lost.color}</p>
-            <p class="text-sm text-gray-700"><span class="font-semibold">Brand:</span> ${match.lost.brand}</p>
-            <p class="text-sm text-gray-700"><span class="font-semibold">Last Seen:</span> ${match.lost.lost_location || "N/A"}</p>
-            <p class="text-sm text-gray-700"><span class="font-semibold">Date:</span> ${new Date(match.lost.created_at).toLocaleDateString()}</p>
-          </div>
-        </div>
-      </div>
-      
-      <div class="${match.status === 'RECLAIMED' ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'} rounded-lg p-4 mb-6">
-  <div class="flex items-start">
-    <svg class="w-5 h-5 ${match.status === 'RECLAIMED' ? 'text-yellow-600' : 'text-green-600'} mr-3 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${match.status === 'RECLAIMED' ? 'M12 8v4m0 4h.01' : 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'}"/>
-    </svg>
-    <div>
-      <p class="text-sm font-semibold ${match.status === 'RECLAIMED' ? 'text-yellow-900' : 'text-green-900'}">
-        ${match.status === 'RECLAIMED' ? 'Item Claimed' : 'Match Approved'}
-      </p>
-      <p class="text-sm ${match.status === 'RECLAIMED' ? 'text-yellow-700' : 'text-green-700'} mt-1">
-        ${match.status === 'RECLAIMED' ? 'This item has been successfully claimed.' : 'This match has been verified and approved.'}
-      </p>
-    </div>
-  </div>
-</div>
-
-      
-      <div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
-        <button onclick="closeMatch()" class="px-6 py-2.5 border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-all duration-200">
-          Close
-        </button>
-        ${currentUser?.role_id === 4 && match.status !== "RECLAIMED" ? `
-        <button onclick="claimItem(${match.match_id})" class="px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-all duration-200">
-          Claim Item
-        </button>` : ""}
-      </div>
-    </div>
-  `;
-}
-
-// ===================== CLAIM ITEM FUNCTION =====================
-window.claimItem = async function(matchId) {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("User not authenticated");
-
-    const res = await fetch(`http://127.0.0.1:8000/items/claim-item/${matchId}`, {
-      method: "POST",
-      headers: { "Authorization": "Bearer " + token }
-    });
-
-    if (!res.ok) throw new Error("Failed to claim item");
-
-    alert("Item successfully claimed!");
-
-    // Update match status locally so it stays on page
-    const match = matchesData.find(m => m.match_id === matchId);
-    if (match) {
-      match.status = "RECLAIMED";
-      match.lost.is_active = false; // optional: mark item as inactive
+    // ===================== FETCH DATA =====================
+    async function fetchCurrentUser() {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+            const res = await fetch("http://127.0.0.1:8000/users/me", {
+                headers: { "Authorization": "Bearer " + token }
+            });
+            if (res.ok) currentUser = await res.json();
+        } catch (err) { console.error(err); }
     }
 
-    // Re-render the current page
-    renderMatchesPage(currentPage);
+    async function fetchMatches(page = 1) {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) throw new Error("User not authenticated");
 
-    // If overlay is open, refresh its content
-    if (!overlay.classList.contains("hidden")) {
-      overlayContent.innerHTML = renderComparisonCard(match);
+            const res = await fetch("http://127.0.0.1:8000/matches/approved-matches", {
+                headers: { "Authorization": "Bearer " + token }
+            });
+
+            if (!res.ok) throw new Error("Failed to fetch matches");
+
+            const data = await res.json();
+            matchesData = data;
+            totalMatches = data.length;
+            renderMatchesPage(page);
+        } catch (err) {
+            console.error(err);
+            if(container) {
+                container.innerHTML = `
+                    <div class="col-span-full py-12 text-center bg-red-50 rounded-2xl border border-red-100">
+                        <p class="text-red-600 font-medium">Unable to load approved matches.</p>
+                    </div>`;
+            }
+        }
     }
 
-  } catch (err) {
-    console.error(err);
-    alert("Error claiming item. Try again later.");
-  }
-};
+    // ===================== RENDER PAGE =====================
+    function renderMatchesPage(page = 1) {
+        if(!container) return;
+        container.innerHTML = "";
+        currentPage = page;
 
-// ===================== RENDER PAGE WITH PAGINATION =====================
-function renderMatchesPage(page = 1) {
-  container.innerHTML = "";
-  currentPage = page;
+        // Empty State
+        if (matchesData.length === 0) {
+            container.innerHTML = `
+                <div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+                   <div class="bg-gray-100 rounded-full h-20 w-20 flex items-center justify-center mb-4">
+                        <i class="fas fa-clipboard-check text-gray-400 text-3xl"></i>
+                   </div>
+                   <h3 class="text-xl font-bold text-gray-900">No Approved Matches</h3>
+                   <p class="text-gray-500 mt-2">Verified matches will appear here.</p>
+                </div>
+            `;
+            if(paginationContainer) paginationContainer.innerHTML = "";
+            return;
+        }
 
-  if (matchesData.length === 0) {
-    container.innerHTML = `
-      <div class="col-span-full text-center py-12">
-        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <p class="text-gray-600 text-lg font-medium">No approved matches yet</p>
-        <p class="text-gray-500 text-sm mt-2">Check back later for updates</p>
-      </div>
-    `;
-    renderPagination();
-    return;
-  }
+        // Slice Data for Pagination
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        const pageItems = matchesData.slice(start, end);
 
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const pageItems = matchesData.slice(start, end);
+        pageItems.forEach(match => {
+            const card = document.createElement("div");
+            // Premium Floating Card Style
+            card.className = "item-card bg-white rounded-[24px] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col h-full";
+            card.innerHTML = renderSummaryCard(match);
+            container.appendChild(card);
 
-  pageItems.forEach(match => {
-    const card = document.createElement("div");
-    card.className = "item-card bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-300";
-    card.innerHTML = renderSummaryCard(match);
-    container.appendChild(card);
+            const btn = card.querySelector(".btn-view");
+            if (btn) btn.onclick = () => window.openMatch(match);
+        });
 
-    const btn = card.querySelector(".view-match-btn");
-    if (btn) btn.addEventListener("click", () => openMatch(match));
-  });
+        renderPagination();
+    }
 
-  renderPagination();
-}
-
-// ===================== PAGINATION UI =====================
+    // ===================== PAGINATION UI =====================
+   // ===================== PAGINATION UI =====================
 function renderPagination() {
-  let pagination = document.getElementById("pagination");
-  if (!pagination) {
-    pagination = document.createElement("div");
-    pagination.id = "pagination";
-    pagination.className = "flex justify-center gap-2 mt-8";
-    container.parentNode.appendChild(pagination);
-  }
+    if(!paginationContainer) return;
+    paginationContainer.innerHTML = "";
+    
+    // Debugging: Check your data count
+    console.log(`Total Matches: ${totalMatches}, Page Size: ${pageSize}`);
 
-  const totalPages = Math.ceil(totalMatches / pageSize);
-  pagination.innerHTML = "";
-  pagination.style.display = 'flex';
+    const totalPages = Math.ceil(totalMatches / pageSize);
+    console.log(`Calculated Pages: ${totalPages}`);
 
-  const prevBtn = document.createElement("button");
-  prevBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>`;
-  prevBtn.className = `px-3 py-2 rounded-lg ${currentPage === 1 ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white"} transition-all duration-200`;
-  prevBtn.disabled = currentPage === 1;
-  prevBtn.addEventListener("click", () => { if (currentPage > 1) renderMatchesPage(--currentPage); });
-  pagination.appendChild(prevBtn);
+    // FIX: Comment this out to see pagination even if there is only 1 page
+    // if (totalPages <= 1) return; 
 
-  for (let i = 1; i <= totalPages; i++) {
-    const btn = document.createElement("button");
-    btn.textContent = i;
-    btn.className = `px-4 py-2 rounded-lg font-medium ${i === currentPage ? "bg-gray-900 text-white" : "bg-white border-2 border-gray-300 text-gray-900 hover:border-gray-900"} transition-all duration-200`;
-    btn.addEventListener("click", () => { currentPage = i; renderMatchesPage(currentPage); });
-    pagination.appendChild(btn);
-  }
+    // If no items, definitely hide it
+    if (totalMatches === 0) return;
 
-  const nextBtn = document.createElement("button");
-  nextBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
-  nextBtn.className = `px-3 py-2 rounded-lg ${currentPage === totalPages ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white"} transition-all duration-200`;
-  nextBtn.disabled = currentPage === totalPages;
-  nextBtn.addEventListener("click", () => { if (currentPage < totalPages) renderMatchesPage(++currentPage); });
-  pagination.appendChild(nextBtn);
+    // Previous Button
+    const prevBtn = document.createElement("button");
+    prevBtn.innerHTML = `<i class="fas fa-chevron-left"></i>`;
+    prevBtn.className = `w-10 h-10 flex items-center justify-center rounded-lg border ${currentPage === 1 ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition"}`;
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.onclick = () => { if (currentPage > 1) renderMatchesPage(currentPage - 1); };
+    paginationContainer.appendChild(prevBtn);
+
+    // Page Numbers
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        btn.className = `w-10 h-10 flex items-center justify-center rounded-lg border text-sm font-bold ${i === currentPage ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition"}`;
+        btn.onclick = () => renderMatchesPage(i);
+        paginationContainer.appendChild(btn);
+    }
+
+    // Next Button
+    const nextBtn = document.createElement("button");
+    nextBtn.innerHTML = `<i class="fas fa-chevron-right"></i>`;
+    nextBtn.className = `w-10 h-10 flex items-center justify-center rounded-lg border ${currentPage === totalPages ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition"}`;
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.onclick = () => { if (currentPage < totalPages) renderMatchesPage(currentPage + 1); };
+    paginationContainer.appendChild(nextBtn);
 }
+    // ===================== RENDER CARDS =====================
+    function renderSummaryCard(match) {
+        const status = match.status.toUpperCase();
+        const score = Math.round(match.similarity_score * 100);
 
-// ===================== OVERLAY FUNCTIONS =====================
-window.openMatch = function(match) {
-  overlayContent.innerHTML = renderComparisonCard(match);
-  overlay.classList.remove("hidden");
-};
+        let badgeClass = "bg-gray-100 text-gray-600";
+        if (status === "APPROVED") badgeClass = "bg-emerald-100 text-emerald-700 border border-emerald-200";
+        if (status === "RECLAIMED") badgeClass = "bg-yellow-100 text-yellow-700 border border-yellow-200";
 
-window.closeMatch = function() {
-  overlay.classList.add("hidden");
-};
+        const imgPath = match.found.image_path 
+            ? `http://127.0.0.1:8000/${match.found.image_path}` 
+            : 'https://via.placeholder.com/400x300?text=No+Image';
 
-// ===================== INITIAL FETCH =====================
-(async () => {
-  await fetchCurrentUser();
-  fetchMatches(currentPage);
+        return `
+            <div class="relative group flex flex-col h-full">
+                <div class="absolute top-4 right-4 z-10">
+                    <span class="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase ${badgeClass} shadow-sm">
+                        ${status}
+                    </span>
+                </div>
+                <div class="absolute top-4 left-4 z-10">
+                    <div class="flex items-center gap-1 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-white/50">
+                        <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span class="text-xs font-bold text-gray-800">${score}% Match</span>
+                    </div>
+                </div>
+                <div class="relative h-64 overflow-hidden bg-gray-100 border-b border-gray-100">
+                    <img src="${imgPath}" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                    onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+                    <div class="absolute bottom-4 left-4 right-4 text-white">
+                        <p class="text-xs font-medium text-yellow-300 mb-0.5 uppercase tracking-wide">${match.lost.brand || "Unknown"}</p>
+                        <h3 class="font-serif text-xl font-bold truncate">${match.lost.item_type || "Item"}</h3>
+                    </div>
+                </div>
+                <div class="p-6 flex-1 flex flex-col">
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div><p class="text-[10px] font-bold text-gray-400 uppercase">Color</p><p class="text-sm font-medium text-gray-900 capitalize">${match.lost.color}</p></div>
+                        <div><p class="text-[10px] font-bold text-gray-400 uppercase">Found</p><p class="text-sm font-medium text-gray-900">${new Date(match.found.created_at).toLocaleDateString()}</p></div>
+                    </div>
+                    <div class="mt-auto pt-4 border-t border-gray-50">
+                        <button class="btn-view w-full py-3 px-4 bg-gray-900 text-white text-sm font-bold rounded-xl shadow-md hover:bg-gray-800 transition-all hover:-translate-y-0.5">
+                            View Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ===================== COMPARISON CARD =====================
+    function renderComparisonCard(match) {
+        const score = Math.round(match.similarity_score * 100);
+        let bannerColor = "bg-green-50 border-green-200 text-green-800";
+        let bannerTitle = "Match Approved";
+        let bannerDesc = "This item has been verified. You can claim it below.";
+
+        if(match.status === 'RECLAIMED') {
+            bannerColor = "bg-yellow-50 border-yellow-200 text-yellow-800";
+            bannerTitle = "Item Claimed";
+            bannerDesc = "You have successfully claimed this item.";
+        }
+
+        const foundImg = match.found.image_path ? `http://127.0.0.1:8000/${match.found.image_path}` : 'https://via.placeholder.com/300';
+        const lostImg = match.lost.image_path ? `http://127.0.0.1:8000/${match.lost.image_path}` : 'https://via.placeholder.com/300';
+
+        return `
+            <div class="flex flex-col h-full max-h-[90vh]">
+                <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <div>
+                        <h2 class="text-2xl font-serif font-bold text-gray-900">Approved Match</h2>
+                        <p class="text-sm text-gray-500 mt-1">Ref ID: #${match.match_id}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                         <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold text-sm">${score}%</div>
+                    </div>
+                </div>
+                <div class="overflow-y-auto p-8 bg-white">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 relative">
+                        <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex w-10 h-10 bg-white rounded-full items-center justify-center font-bold text-gray-300 shadow-md border border-gray-100 text-xs">VS</div>
+                        
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group hover:border-green-200">
+                            <div class="bg-green-50/50 px-4 py-2 border-b border-green-100 text-green-900 font-bold text-xs uppercase tracking-wide">Found Item</div>
+                            <img src="${foundImg}" class="w-full h-56 object-contain p-4 bg-gray-50" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'">
+                            <div class="p-4 grid grid-cols-2 gap-2 text-sm">
+                                <div><span class="text-gray-400 text-xs font-bold uppercase">Brand</span><br>${match.found.brand || "--"}</div>
+                                <div><span class="text-gray-400 text-xs font-bold uppercase">Color</span><br>${match.found.color || "--"}</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group hover:border-gray-300">
+                            <div class="bg-gray-50 px-4 py-2 border-b border-gray-100 text-gray-900 font-bold text-xs uppercase tracking-wide">Your Report</div>
+                            <img src="${lostImg}" class="w-full h-56 object-contain p-4 bg-gray-50" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'">
+                            <div class="p-4 grid grid-cols-2 gap-2 text-sm">
+                                <div><span class="text-gray-400 text-xs font-bold uppercase">Brand</span><br>${match.lost.brand || "--"}</div>
+                                <div><span class="text-gray-400 text-xs font-bold uppercase">Color</span><br>${match.lost.color || "--"}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="${bannerColor} border rounded-xl p-4 flex gap-3 shadow-sm">
+                        <i class="fas fa-info-circle mt-1 text-lg"></i>
+                        <div><h4 class="font-bold text-sm uppercase">${bannerTitle}</h4><p class="text-sm opacity-90">${bannerDesc}</p></div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-8 py-5 border-t border-gray-100 flex flex-row-reverse gap-3">
+                    <button onclick="closeMatch()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition">Close</button>
+                    ${(currentUser?.role_id === 4 && match.status !== "RECLAIMED") ? `
+                        <button onclick="claimItem(${match.match_id})" class="px-5 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition shadow-lg flex items-center gap-2">
+                            <i class="fas fa-box-open"></i> Claim Item
+                        </button>
+                    ` : ""}
+                </div>
+            </div>
+        `;
+    }
+
+    // ===================== GLOBAL ACTIONS =====================
+    window.openMatch = function(match) {
+        if(!overlayContent) return;
+        overlayContent.innerHTML = renderComparisonCard(match);
+        overlay.classList.remove("hidden");
+        setTimeout(() => {
+            modalBackdrop.classList.remove("opacity-0");
+            modalPanel.classList.remove("scale-95", "opacity-0");
+            modalPanel.classList.add("scale-100", "opacity-100");
+        }, 10);
+    };
+
+    window.closeMatch = function() {
+        if(!modalBackdrop || !modalPanel) return;
+        modalBackdrop.classList.add("opacity-0");
+        modalPanel.classList.remove("scale-100", "opacity-100");
+        modalPanel.classList.add("scale-95", "opacity-0");
+        setTimeout(() => { overlay.classList.add("hidden"); }, 300);
+    };
+
+    window.claimItem = async function(matchId) {
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`http://127.0.0.1:8000/items/claim-item/${matchId}`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + token }
+            });
+            if (!res.ok) throw new Error("Failed");
+            alert("Item successfully claimed!");
+            window.closeMatch();
+            
+            // Update local data
+            const m = matchesData.find(x => x.match_id === matchId);
+            if(m) m.status = "RECLAIMED";
+            renderMatchesPage(currentPage);
+        } catch (err) { alert("Error claiming item."); }
+    };
+
 })();

@@ -507,6 +507,105 @@
                 gap: 12px;
             }
         }
+
+
+
+        :root {
+            --bg-deep: rgb(255, 255, 255);
+    /* Changed from rgba(20, 20, 20, 0.6) to almost pure black */
+    --bg-card: rgba(0, 0, 0, 0.85); 
+    
+    --gold-primary: #D4AF37;
+    --gold-light: #F3E5AB;
+    --gold-gradient: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: #e2e8f0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(212, 175, 55, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(70, 70, 70, 0.15), transparent 25%);
+            min-height: 100vh;
+        }
+
+        /* --- Premium Glass Cards --- */
+        .gold-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .gold-card:hover {
+            border-color: rgba(212, 175, 55, 0.3);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* --- Typography Effects --- */
+        .text-gold-gradient {
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+        }
+
+        .font-luxury {
+            font-family: 'Plus Jakarta Sans', sans-serif; /* Kept modern, swap to Cinzel for serif */
+            letter-spacing: -0.02em;
+        }
+
+        /* --- Gold Button --- */
+        .btn-gold {
+            background: linear-gradient(135deg, #b38728 0%, #fbf5b7 50%, #aa771c 100%);
+            color: #1a1a1a;
+            border: none;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+            transition: all 0.4s ease;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+        }
+        
+        .btn-gold::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #aa771c 0%, #bf953f 100%);
+            z-index: -1;
+            transition: opacity 0.4s ease;
+            opacity: 0;
+        }
+        .btn-gold:hover::before { opacity: 1; }
+        .btn-gold:hover { box-shadow: 0 0 25px rgba(212, 175, 55, 0.5); transform: scale(1.02); }
+
+        /* --- Custom Scrollbar --- */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* --- Grid Layout --- */
+        .main-content-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        @media (min-width: 1024px) {
+            .main-content-grid {
+                grid-template-columns: 2fr 1fr; /* 2/3 Left, 1/3 Right */
+            }
+        }
+
     </style>
 </head>
 <body class="h-full">
@@ -514,8 +613,8 @@
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
   
   <!-- Fixed Sidebar -->
-  <div class="sidebar-container" id="sidebar">
-    <div class="p-6 border-b border-gray-200">
+  <div class=" sidebar-container" id="sidebar">
+    <div class=" p-6 border-b border-gray-200">
       <div class="flex items-center space-x-3">
         <img src="images/logo.png" alt="ReClaim Logo" class="w-8 h-8 object-contain">
         
@@ -611,7 +710,7 @@
   <!-- Main Layout -->
   <div class="min-h-full">
     <!-- Header -->
-    <header class="bg-white shadow-sm">
+    <header  class="bg-white shadow-sm">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 justify-between items-center">
           <!-- Left side: Menu button and Logo -->
@@ -723,225 +822,134 @@
     </header>
 
     <!-- Main Content Area -->
-    <div class="py-8">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="main-content-grid">
-          <!-- Left Column -->
-          <div class="left-column">
-            <!-- Main Dashboard Card -->
-            <div class="elegant-card">
-              <!-- Date & Welcome Header -->
-              <div class="date-header">
-                <h1 id="current-date" class="text-3xl md:text-4xl font-bold text-white-900 mb-3 font-serif">Friday, Jan 23, 2026</h1>
-                <p id="welcome-message" class="text-base md:text-lg text-white-600 font-sans">Good morning, Captain!</p>
-              </div>
+    <div class="py-8 w-full min-h-screen">
+    <div class="w-full px-4 sm:px-6 lg:px-8">
+        
+        <div class="main-content-grid grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+            <div class="lg:col-span-2 flex flex-col gap-6">
+            
+                <div class="gold-card relative overflow-hidden p-8 md:p-10 group">
+                    <div class="relative z-10">
+                        <h1 class="text-4xl md:text-5xl font-luxury font-bold text-white mb-2 tracking-tight" id="welcome-message">
+                            Welcome back
+                        </h1>
+                        <p class="text-gray-400 font-medium text-lg flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                            <span id="current-date">Loading date...</span>
+                        </p>
+                    </div>
+                    
+                    <div class="absolute right-0 top-0 w-64 h-64 bg-yellow-600/10 rounded-full blur-[80px] group-hover:bg-yellow-600/20 transition-all duration-700"></div>
+                    <div class="absolute right-10 bottom-[-20px] text-9xl text-white/5 rotate-12">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                </div>
 
-              <!-- Updates Section -->
-              <div class="updates-section">
-                <h3 class="updates-title">Updates from yesterday</h3>
-                <div class="update-stats" id="yesterday-updates">
-                  <!-- Will be populated dynamically -->
-                  <div class="update-stat">
-                    <div class="update-number">2,110</div>
-                    <div class="update-label">Items reported</div>
-                  </div>
-                  <div class="update-stat">
-                    <div class="update-number">94%</div>
-                    <div class="update-label">Matches Found</div>
-                  </div>
-                  <div class="update-stat">
-                    <div class="update-number">1,124</div>
-                    <div class="update-label">Items Recovered</div>
-                  </div>
-                </div>
-              </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    
+                    <div class="gold-card p-5 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <i class="fas fa-search text-6xl text-white"></i>
+                        </div>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Active Cases</p>
+                        <h3 class="text-3xl font-bold text-white group-hover:scale-105 transition-transform origin-left" id="stat-active">0</h3>
+                        <div class="mt-4 h-1 w-full bg-gray-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-blue-500 w-1/2 rounded-full"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="gold-card p-5 relative overflow-hidden border-yellow-500/30 group">
+                        <div class="absolute inset-0 bg-yellow-500/5 group-hover:bg-yellow-500/10 transition-colors"></div>
+                        <div class="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-30 transition-opacity">
+                            <i class="fas fa-bolt text-6xl text-yellow-400"></i>
+                        </div>
+                        <p class="text-xs font-bold text-yellow-200/70 uppercase tracking-widest mb-1">New Matches</p>
+                        <h3 class="text-3xl font-bold text-gold-gradient group-hover:scale-105 transition-transform origin-left" id="stat-matches">0</h3>
+                        <div class="mt-4 h-1 w-full bg-gray-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-yellow-600 to-yellow-300 w-3/4 rounded-full"></div>
+                        </div>
+                    </div>
 
-              <!-- Today's Orders/Reports -->
-              <div class="orders-section">
-                <div class="orders-header">
-                  <h3 class="orders-title">Today's Reports</h3>
-                  <div class="orders-count">
-                    You have <strong id="today-reports-count">5</strong> reports today
-                  </div>
+                    <div class="gold-card p-5 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <i class="fas fa-check-circle text-6xl text-emerald-400"></i>
+                        </div>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Recovered</p>
+                        <h3 class="text-3xl font-bold text-white group-hover:scale-105 transition-transform origin-left" id="stat-recovered">0</h3>
+                        <div class="mt-4 h-1 w-full bg-gray-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-emerald-500 w-2/3 rounded-full"></div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div id="today-reports-list">
-                  <!-- Will be populated dynamically -->
-                  <div class="order-item">
-                    <div class="order-info">
-                      <span class="order-name">Lost Wallet - Black Leather</span>
-                      <span class="order-price">High Priority</span>
+
+                <div class="gold-card p-8 flex-grow">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20">
+                                <i class="fas fa-robot text-yellow-400"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-white">AI Analysis Results</h3>
+                        </div>
+                        <a href="ai-match.html" class="text-xs font-bold text-gray-400 hover:text-white transition-colors uppercase tracking-wider border border-gray-700 px-4 py-2 rounded-full hover:border-gray-500">
+                            View All
+                        </a>
                     </div>
-                  </div>
-                  <div class="order-item">
-                    <div class="order-info">
-                      <span class="order-name">iPhone 14 Pro Max</span>
-                      <span class="order-price">Matched by AI</span>
+                    
+                    <div id="recent-matches-list" class="space-y-3">
+                        <div class="animate-pulse flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/5">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-gray-700 rounded-full"></div>
+                                <div class="space-y-2">
+                                    <div class="h-4 w-32 bg-gray-700 rounded"></div>
+                                    <div class="h-3 w-20 bg-gray-800 rounded"></div>
+                                </div>
+                            </div>
+                            <div class="h-6 w-16 bg-gray-700 rounded"></div>
+                        </div>
                     </div>
-                  </div>
-                  <div class="order-item">
-                    <div class="order-info">
-                      <span class="order-name">Car Keys - Toyota</span>
-                      <span class="order-price">Pending Claim</span>
-                    </div>
-                  </div>
-                  <div class="order-item">
-                    <div class="order-info">
-                      <span class="order-name">Laptop Bag</span>
-                      <span class="order-price">Under Review</span>
-                    </div>
-                  </div>
-                  <div class="order-item">
-                    <div class="order-info">
-                      <span class="order-name">Smart Watch - Apple</span>
-                      <span class="order-price">Recovered</span>
-                    </div>
-                  </div>
                 </div>
-                
-                <a href="my-reports.html" class="view-all-btn">
-                  View All Reports →
-                </a>
-              </div>
+
             </div>
 
-            <!-- Quick Actions -->
-            <div class="elegant-card p-6">
-              <div class="quick-actions">
-                <a href="report-lost.html" class="quick-action-btn primary">
-                  <div class="quick-action-icon">
-                    <i class="fas fa-plus-circle"></i>
-                  </div>
-                  <div class="quick-action-label">Report Lost Item</div>
-                </a>
+            <div class="flex flex-col gap-6">
                 
-                <a href="my-reports.html" class="quick-action-btn">
-                  <div class="quick-action-icon">
-                    <i class="fas fa-clipboard-list"></i>
-                  </div>
-                  <div class="quick-action-label">View My Reports</div>
-                </a>
-                
-                <a href="ai-match.html" class="quick-action-btn">
-                  <div class="quick-action-icon">
-                    <i class="fas fa-robot"></i>
-                  </div>
-                  <div class="quick-action-label">Check AI Matches</div>
-                </a>
-              </div>
+                <div class="gold-card p-6">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Quick Actions</h3>
+                    <div class="grid grid-cols-1 gap-4">
+                        <a href="report-lost.html" class="btn-gold p-4 rounded-xl flex items-center justify-center gap-3 group">
+                            <i class="fas fa-plus-circle text-xl"></i>
+                            <span class="font-bold text-sm tracking-wide">REPORT LOST ITEM</span>
+                        </a>
+                        
+                        <a href="my-reports.html" class="bg-white/5 border border-white/10 p-4 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-3 text-gray-300">
+                            <i class="fas fa-list-alt text-lg"></i>
+                            <span class="font-medium text-sm">View My Reports</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="gold-card p-6 flex-grow flex flex-col min-h-[300px]">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-white">Analytics</h3>
+                        <p class="text-xs text-gray-500">Weekly Activity</p>
+                    </div>
+                    <div class="relative w-full flex-grow">
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="gold-card p-6">
+                     <h3 class="text-lg font-bold text-white mb-4">Recent Logs</h3>
+                     <div id="recent-reports-list" class="space-y-4">
+                     </div>
+                </div>
+
             </div>
-
-            <!-- Revenue Chart Section -->
-            <div class="chart-card elegant-card">
-              <div class="chart-card-header">
-                <h3 class="chart-card-title">Your Activity Overview</h3>
-                <p class="chart-card-subtitle">Charts</p>
-              </div>
-
-              <!-- Simple chart visualization using chart.js chatgpt--> 
-              <div class="h-48 flex items-end space-x-1 mt-4"></div>
-                <div class="h-48 mt-6" id="recovery-rate-line-chart"></div>
-              
-              
-            </div>
-          </div>
-
-          <!-- Right Column -->
-<div class="right-column">
-
-  <!-- Monthly Stats -->
-  <div class="stats-card elegant-card">
-    <div class="stats-card-header">
-      <h4 class="stats-card-title">Your Recoveries This Month</h4>
-      <div class="stats-card-value" id="monthly-recoveries">24</div>
-      <div class="stats-card-change positive" id="monthly-change">
-        <i class="fas fa-arrow-up mr-1"></i> +4.33% compared to last month
-      </div>
-    </div>
-  </div>
-
-  <!-- Recovery Rate -->
-  <div class="stats-card elegant-card">
-    <div class="stats-card-header">
-      <h4 class="stats-card-title">Your Recovery Rate</h4>
-      <div class="stats-card-value" id="success-rate">94%</div>
-      <div class="stats-card-change negative" id="success-rate-change">
-        <i class="fas fa-arrow-down mr-1"></i> -1.03% compared to last month
-      </div>
-    </div>
-  </div>
-
-  <!-- Promo / Upgrade Card -->
-  <div class="promo-card elegant-card">
-    <h3 class="promo-title">Recover your items faster.</h3>
-    <p class="promo-description">
-      Unlock smarter AI matching and personalized alerts to increase your chances of getting your lost items back.
-    </p>
-    <button class="btn-upgrade">
-      <i class="fas fa-rocket mr-2"></i> Explore Premium
-    </button>
-  </div>
-
-  <!-- Item Categories -->
-  <div class="products-card elegant-card">
-    <div class="products-header">
-      <h3 class="products-title">Your Items by Category</h3>
-      <p class="products-subtitle">Breakdown of items you’ve reported</p>
-    </div>
-
-    <div class="space-y-4 mt-4" id="top-categories">
-      <div class="flex items-center justify-between">
-        <span>Electronics</span>
-        <span class="font-semibold">42%</span>
-      </div>
-      <div class="flex items-center justify-between">
-        <span>Wallets & Purses</span>
-        <span class="font-semibold">23%</span>
-      </div>
-      <div class="flex items-center justify-between">
-        <span>Keys</span>
-        <span class="font-semibold">15%</span>
-      </div>
-      <div class="flex items-center justify-between">
-        <span>Jewelry</span>
-        <span class="font-semibold">12%</span>
-      </div>
-      <div class="flex items-center justify-between">
-        <span>Documents</span>
-        <span class="font-semibold">8%</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Personal Progress -->
-  <div class="market-card elegant-card">
-    <h3 class="market-title">Your Recovery Progress</h3>
-    <p class="text-gray-600 mb-6">
-      Percentage of your reported items that have been successfully recovered
-    </p>
-
-    <div class="mb-6">
-      <div class="w-full bg-gray-200 rounded-full h-2.5">
-        <div
-          class="bg-gradient-to-r from-purple-500 to-indigo-600 h-2.5 rounded-full"
-          style="width: 76%">
         </div>
-      </div>
-      <div class="flex justify-between mt-2">
-        <span class="text-sm text-gray-600">Your recovery rate</span>
-        <span class="text-sm font-semibold">76%</span>
-      </div>
     </div>
-
-    <button class="btn-purchase">
-      <i class="fas fa-list mr-2"></i> View My Reports
-    </button>
- 
-
-            </div>
-          </div>
-        </div>
-      </div>
+</div>
+    </div>
     </div>
   </div>
 
