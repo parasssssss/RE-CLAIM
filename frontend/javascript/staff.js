@@ -1,25 +1,40 @@
 // ✅ WRAP EVERYTHING IN A CLOSURE TO PREVENT CONFLICTS
 (() => {
-    document.addEventListener("DOMContentLoaded", () => {
-        fetchStaff();
-        const searchInput = document.getElementById("staffSearch");
-        if(searchInput) searchInput.addEventListener("input", filterStaff);
-
-        // Attach Pagination Events Dynamically
-        const prevBtn = document.getElementById("prevBtn");
-        const nextBtn = document.getElementById("nextBtn");
-        if (prevBtn) prevBtn.onclick = () => changeStaffPage(-1);
-        if (nextBtn) nextBtn.onclick = () => changeStaffPage(1);
-    });
-
-    // --- STATE VARIABLES (Now Private) ---
+    // --- STATE VARIABLES ---
     let allStaff = [];              
     let currentFilteredStaff = [];  
     let currentPage = 1;            
     const rowsPerPage = 5;          
 
     // =======================
-    // 1. FETCH & DISPLAY STAFF
+    // 1. INITIALIZE LISTENERS
+    // =======================
+    document.addEventListener("DOMContentLoaded", () => {
+        fetchStaff();
+        
+        // Search Listener
+        const searchInput = document.getElementById("staffSearch");
+        if(searchInput) searchInput.addEventListener("input", filterStaff);
+
+        // ✅ PAGINATION LISTENERS (Attached via JS, not HTML)
+        const prevBtn = document.getElementById("prevBtn");
+        const nextBtn = document.getElementById("nextBtn");
+
+        if (prevBtn) {
+            prevBtn.addEventListener("click", () => {
+                changeStaffPage(-1);
+            });
+        }
+        
+        if (nextBtn) {
+            nextBtn.addEventListener("click", () => {
+                changeStaffPage(1);
+            });
+        }
+    });
+
+    // =======================
+    // 2. FETCH & DISPLAY STAFF
     // =======================
     async function fetchStaff() {
         const tableBody = document.getElementById("staffTableBody");
@@ -28,7 +43,6 @@
         if (!token) return window.location.href = "landing.html";
 
         try {
-            // FIX: Using correct endpoint
             const res = await fetch("http://127.0.0.1:8000/staff/my-staff", {
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -39,7 +53,7 @@
             
             // Initialize Pagination
             currentFilteredStaff = [...allStaff]; 
-            currentPage = 1;                      
+            currentPage = 1;                  
             
             updateStats(allStaff);
             updatePaginationDisplay(); 
@@ -53,7 +67,7 @@
     }
 
     // =======================
-    // 2. PAGINATION LOGIC
+    // 3. PAGINATION LOGIC
     // =======================
     function updatePaginationDisplay() {
         const totalItems = currentFilteredStaff.length;
@@ -84,13 +98,13 @@
         const nextBtn = document.getElementById("nextBtn");
 
         if (prevBtn) prevBtn.disabled = (currentPage === 1);
-        if (nextBtn) nextBtn.disabled = (currentPage === totalPages);
+        if (nextBtn) nextBtn.disabled = (currentPage === totalPages || totalPages === 0);
 
         renderStaffTable(itemsToShow);
     }
 
-    // ✅ RENAMED & EXPOSED GLOBALLY
-    window.changeStaffPage = function(direction) {
+    // Function called by the listeners above
+    function changeStaffPage(direction) {
         const totalPages = Math.ceil(currentFilteredStaff.length / rowsPerPage) || 1;
         const newPage = currentPage + direction;
 
@@ -101,7 +115,7 @@
     }
 
     // =======================
-    // 3. RENDER TABLE
+    // 4. RENDER TABLE
     // =======================
     function renderStaffTable(data) {
         const tableBody = document.getElementById("staffTableBody");
@@ -177,10 +191,10 @@
     }
 
     // =======================
-    // 4. SERVER ACTIONS & EXPORTS
+    // 5. EXPOSE GLOBALS FOR BUTTONS IN TABLE
     // =======================
     
-    // Expose these functions to the window so HTML 'onclick' attributes can find them
+    // Create staff functionality
     window.createStaff = async function() {
         const first = document.getElementById("newStaffFirst").value;
         const last = document.getElementById("newStaffLast").value;
@@ -247,16 +261,13 @@
         }
     }
 
-    // =======================
-    // 5. MODAL LOGIC (EXPOSED)
-    // =======================
+    // Modal Logic
     window.openAddStaffModal = function() {
         const modal = document.getElementById("addStaffModal");
         const backdrop = document.getElementById("modalBackdrop");
         const panel = document.getElementById("modalPanel");
 
         modal.classList.remove("hidden");
-        // Fallback for basic HTML
         if (backdrop && panel) {
             setTimeout(() => {
                 backdrop.classList.remove("opacity-0");

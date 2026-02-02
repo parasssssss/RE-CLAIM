@@ -105,6 +105,87 @@ const addLoadingStyles = () => {
 // Initialize styles
 addLoadingStyles();
 
+/* ================= REMEMBER ME FUNCTIONALITY ================= */
+const RememberMeManager = {
+    // Key for storing remember me data
+    storageKey: 'reclaim_remember_me',
+    
+    // Save credentials if remember me is checked
+    saveCredentials(email, remember) {
+        if (remember) {
+            // Store in localStorage with a simple encoding (not production-secure, for demo)
+            const data = btoa(JSON.stringify({ email, timestamp: Date.now() }));
+            localStorage.setItem(this.storageKey, data);
+            console.log('Credentials saved');
+        } else {
+            this.clearCredentials();
+        }
+    },
+    
+    // Load saved credentials on page load
+    loadCredentials() {
+        try {
+            const stored = localStorage.getItem(this.storageKey);
+            if (stored) {
+                const data = JSON.parse(atob(stored));
+                return data.email;
+            }
+        } catch (err) {
+            console.error('Error loading credentials:', err);
+            this.clearCredentials();
+        }
+        return null;
+    },
+    
+    // Clear stored credentials
+    clearCredentials() {
+        localStorage.removeItem(this.storageKey);
+        console.log('Credentials cleared');
+    },
+    
+    // Check if remember me was previously set
+    isRemembered() {
+        return localStorage.getItem(this.storageKey) !== null;
+    }
+};
+
+// Auto-fill form function
+const autoFillRememberedEmail = () => {
+    const emailInput = document.getElementById('loginEmail');
+    const rememberCheckbox = document.getElementById('rememberMe');
+    
+    if (emailInput && rememberCheckbox) {
+        const savedEmail = RememberMeManager.loadCredentials();
+        if (savedEmail) {
+            emailInput.value = savedEmail;
+            rememberCheckbox.checked = true;
+            console.log('Email auto-filled from saved credentials');
+            // Focus on password field for better UX
+            setTimeout(() => {
+                const passwordInput = document.getElementById('loginPassword');
+                if (passwordInput) {
+                    passwordInput.focus();
+                }
+            }, 100);
+        }
+    }
+};
+
+// Load credentials immediately when script runs (not just on DOMContentLoaded)
+autoFillRememberedEmail();
+
+// Also reload if page becomes visible (tab switch)
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        autoFillRememberedEmail();
+    }
+});
+
+// Auto-fill form on page load if credentials were saved
+document.addEventListener('DOMContentLoaded', () => {
+    autoFillRememberedEmail();
+});
+
 // Enhanced login handler with loading animation
 document.getElementById("loginBtn").addEventListener("click", async (e) => {
     e.preventDefault();
@@ -112,6 +193,7 @@ document.getElementById("loginBtn").addEventListener("click", async (e) => {
     const loginBtn = document.getElementById("loginBtn");
     const emailInput = document.getElementById("loginEmail");
     const passwordInput = document.getElementById("loginPassword");
+    const rememberCheckbox = document.getElementById("rememberMe");
     
     // Validate inputs
     if (!emailInput.value.trim() || !passwordInput.value.trim()) {
@@ -163,6 +245,13 @@ document.getElementById("loginBtn").addEventListener("click", async (e) => {
         const result = await res.json();
 
         if (res.ok) {
+            // Save credentials if remember me is checked
+            if (rememberCheckbox.checked) {
+                RememberMeManager.saveCredentials(emailInput.value.trim(), true);
+            } else {
+                RememberMeManager.clearCredentials();
+            }
+            
             // Success - show brief success animation
             loginBtn.innerHTML = `
                 <span class="absolute left-0 inset-y-0 flex items-center pl-3">
@@ -198,7 +287,7 @@ document.getElementById("loginBtn").addEventListener("click", async (e) => {
                 if (roleId === 2) {
                     window.location.href = "dashboard_admin.html";
                 } else if (roleId === 3) {
-                    window.location.href = "dashboard_normie.html";
+                    window.location.href = "dashboard_staff.html";
                 } else {
                     window.location.href = "dashboard_normie.html";
                 }

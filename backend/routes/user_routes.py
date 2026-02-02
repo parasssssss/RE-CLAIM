@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from scipy import stats
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc
@@ -200,4 +201,90 @@ def get_admin_dashboard_stats(
             "labels": chart_labels,
             "data": chart_data
         }
+    }
+
+
+
+# Add these imports if missing
+from sqlalchemy import func, case
+from datetime import datetime, timedelta
+
+@router.get("/api/dashboard/staff/{user_id}")
+def get_staff_dashboard(user_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    
+    # Security: Ensure user is accessing their own data or is Admin
+    if current_user.user_id != user_id and current_user.role_id != 2:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    # 1. --- STATS ---
+    # CHANGED VARIABLE NAME FROM 'stats_query' TO 'stats_result' TO AVOID CONFUSION
+    stats_result = db.query(
+        func.count(case((models.Item.status == 'FOUND', 1))).label('active_found'),
+        func.count(case((models.Item.status == 'RECLAIMED', 1))).label('recovered')
+    ).filter(
+        models.Item.user_id == user_id
+    ).first()
+
+    # Get count of matches specifically for items this staff member uploaded
+    user_found_items_subquery = db.query(models.Item.item_id).filter(models.Item.user_id == user_id)
+    
+    matches_count = db.query(models.Match).filter(
+        models.Match.found_item_id.in_(user_found_items_subquery)
+    ).count()
+
+    # 2. --- RECENT MATCHES (AI FEED) ---
+    recent_matches_records = db.query(models.Match).filter(
+        models.Match.found_item_id.in_(user_found_items_subquery)
+    ).order_by(models.Match.created_at.desc()).limit(5).all()
+
+    recent_matches_data = []
+    for m in recent_matches_records:
+        lost_item = db.query(models.Item).get(m.lost_item_id)
+        recent_matches_data.append({
+            "match_id": m.match_id,
+            "item_name": lost_item.item_type if lost_item else "Unknown Item",
+            "similarity": m.similarity_score,
+            "date": m.created_at.strftime("%b %d")
+        })
+
+    # 3. --- RECENT LOGS ---
+    recent_logs = db.query(models.Item).filter(
+        models.Item.user_id == user_id
+    ).order_by(models.Item.created_at.desc()).limit(5).all()
+
+    recent_logs_data = []
+    for item in recent_logs:
+        recent_logs_data.append({
+            "name": f"{item.color} {item.brand} {item.item_type}",
+            "status": item.status,
+            "date": item.created_at.strftime("%b %d")
+        })
+
+    # 4. --- CHART ---
+    today = datetime.utcnow().date()
+    chart_data = []
+    
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        count = db.query(models.Item).filter(
+            models.Item.user_id == user_id,
+            func.date(models.Item.created_at) == day
+        ).count()
+        
+        chart_data.append({
+            "date": day.strftime("%a"),
+            "count": count
+        })
+
+    return {
+        "stats": {
+            # FIX: Use stats_result instead of stats
+            # We also add a check "if stats_result else 0" in case the user has 0 items
+            "active_reports": getattr(stats_result, 'active_found', 0), 
+            "total_recovered": getattr(stats_result, 'recovered', 0),   
+            "matches_today": matches_count             
+        },
+        "recent_matches": recent_matches_data,
+        "recent_reports": recent_logs_data,
+        "activity_chart": chart_data
     }

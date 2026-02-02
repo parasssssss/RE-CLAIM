@@ -3,41 +3,21 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 from dotenv import load_dotenv
+from models import Notification  # Ensure this import works based on your project structure
+
 load_dotenv()
 
-def send_reset_email(to_email, reset_link):
-    sender_email = "info.reclaimm@gmail.com"
-    sender_password = os.getenv("APP_PASSWORD")  
-    
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Password Reset - Reclaim"
-    msg["From"] = sender_email
-    msg["To"] = to_email
-    
-    html = f"""
-    <html>
-      <body>
-        <p>Hi,<br>
-           Click the link below to reset your password:<br>
-           <a href="{reset_link}">Reset Password</a>
-        </p>
-      </body>
-    </html>
-    """
-    
-    msg.attach(MIMEText(html, "html"))
-    
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, to_email, msg.as_string())
-
-
-
-
+# ==========================================
+# 1. CORE EMAIL SENDER (SMTP)
+# ==========================================
 def send_email(to_email: str, subject: str, html_body: str):
     try:
         sender_email = "info.reclaimm@gmail.com"
         sender_password = os.getenv("APP_PASSWORD")
+
+        if not sender_password:
+            print("❌ Error: APP_PASSWORD not found in environment variables.")
+            return
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
@@ -49,13 +29,30 @@ def send_email(to_email: str, subject: str, html_body: str):
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, to_email, msg.as_string())
 
-        print("✅ Email sent to", to_email)
+        print(f"✅ Email sent to {to_email}")
 
     except Exception as e:
-        print("❌ Email failed:", e)
+        print(f"❌ Email failed to {to_email}: {e}")
 
 
-# 🔔 Match Found
+def send_reset_email(to_email, reset_link):
+    html = f"""
+    <html>
+      <body>
+        <p>Hi,<br>
+           Click the link below to reset your password:<br>
+           <a href="{reset_link}">Reset Password</a>
+        </p>
+      </body>
+    </html>
+    """
+    send_email(to_email, "Password Reset - Reclaim", html)
+
+
+# ==========================================
+# 2. HTML GENERATORS & SENDERS
+# ==========================================
+
 def send_match_found_email(to_email, item_type):
     html = f"""
     <html>
@@ -74,7 +71,6 @@ def send_match_found_email(to_email, item_type):
     send_email(to_email, "Possible Match Found - ReClaim", html)
 
 
-# ✅ Match Approved
 def send_match_approved_email(to_email, item_type):
     html = f"""
     <html>
@@ -92,7 +88,6 @@ def send_match_approved_email(to_email, item_type):
     send_email(to_email, "Match Approved - ReClaim", html)
 
 
-# ❌ Match Rejected
 def send_match_rejected_email(to_email, item_type):
     html = f"""
     <html>
@@ -111,7 +106,6 @@ def send_match_rejected_email(to_email, item_type):
 
 
 def send_item_recovered_email(to_email, item_type):
-    subject = "Item Successfully Recovered ✅"
     html = f"""
     <html>
       <body>
@@ -122,12 +116,13 @@ def send_item_recovered_email(to_email, item_type):
       </body>
     </html>
     """
-
-    send_email(to_email, subject, html)
-
+    send_email(to_email, "Item Successfully Recovered ✅", html)
 
 
-
+# ==========================================
+# 3. DATABASE LOGIC (Synchronous)
+# Call this inside your Router functions
+# ==========================================
 def create_notification(
     db,
     user_id,
@@ -137,8 +132,9 @@ def create_notification(
     item_id=None,
     match_id=None
 ):
-    from models import Notification
-
+    """
+    Creates a notification record in the database.
+    """
     notification = Notification(
         user_id=user_id,
         item_id=item_id,
@@ -155,57 +151,23 @@ def create_notification(
     return notification
 
 
-def notify_match_found(db, user, item, match):
-    create_notification(
-        db=db,
-        user_id=user.user_id,
-        item_id=item.item_id,
-        match_id=match.match_id,
-        title="Possible Match Found",
-        message="A possible match was found for your item.",
-        notification_type="MATCH_FOUND"
-    )
+# ==========================================
+# 4. BACKGROUND TASK WRAPPERS (Async Safe)
+# Pass these to background_tasks.add_task()
+# ==========================================
 
-    send_match_found_email(user.email, item.item_type)
+def send_match_found_task(user_email: str, item_type: str):
+    """Safe for BackgroundTasks - No DB session required"""
+    send_match_found_email(user_email, item_type)
 
+def send_match_approved_task(user_email: str, item_type: str):
+    """Safe for BackgroundTasks - No DB session required"""
+    send_match_approved_email(user_email, item_type)
 
-def notify_match_approved(db, user, item, match):
-    create_notification(
-        db=db,
-        user_id=user.user_id,
-        item_id=item.item_id,
-        match_id=match.match_id,
-        title="Match Approved",
-        message="Your item match has been approved.",
-        notification_type="MATCH_APPROVED"
-    )
+def send_match_rejected_task(user_email: str, item_type: str):
+    """Safe for BackgroundTasks - No DB session required"""
+    send_match_rejected_email(user_email, item_type)
 
-    send_match_approved_email(user.email, item.item_type)
-
-
-def notify_match_rejected(db, user, item, match):
-    create_notification(
-        db=db,
-        user_id=user.user_id,
-        item_id=item.item_id,
-        match_id=match.match_id,
-        title="Match Rejected",
-        message="Your item match was rejected after review.",
-        notification_type="MATCH_REJECTED"
-    )
-
-    send_match_rejected_email(user.email, item.item_type)
-
-
-def notify_item_recovered(db, user, item):
-    create_notification(
-        db=db,
-        user_id=user.user_id,
-        item_id=item.item_id,
-        title="Item Recovered",
-        message="Your item has been successfully recovered.",
-        notification_type="ITEM_RECOVERED"
-    )
-
-    send_item_recovered_email(user.email, item.item_type)
-
+def send_item_recovered_task(user_email: str, item_type: str):
+    """Safe for BackgroundTasks - No DB session required"""
+    send_item_recovered_email(user_email, item_type)

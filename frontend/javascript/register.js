@@ -76,15 +76,34 @@ class PasswordStrengthMeter {
     }
 
     updateRequirementsDisplay() {
-        const items = document.querySelectorAll('.requirement-item');
-        const checks = Object.values(this.requirements);
-
-        items.forEach((item, i) => {
-            const valid = checks[i];
-            item.className = `requirement-item flex items-center ${
-                valid ? 'requirement-valid' : 'requirement-invalid'
-            }`;
+        // Update individual requirement items
+        const reqIds = ['req-length', 'req-upper', 'req-lower', 'req-number', 'req-special'];
+        const reqKeys = ['length', 'uppercase', 'lowercase', 'number', 'special'];
+        
+        reqIds.forEach((id, i) => {
+            const element = document.getElementById(id);
+            if (element) {
+                const isValid = this.requirements[reqKeys[i]];
+                element.className = `requirement-check ${isValid ? 'valid' : 'invalid'}`;
+                
+                // Update SVG icon
+                const svg = element.querySelector('svg');
+                if (svg) {
+                    if (isValid) {
+                        svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />';
+                    } else {
+                        svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />';
+                    }
+                }
+            }
         });
+
+        // Update badge count
+        const passedCount = Object.values(this.requirements).filter(v => v).length;
+        const badgeText = document.getElementById('requirementBadgeText');
+        if (badgeText) {
+            badgeText.textContent = `${passedCount}/5 requirements`;
+        }
     }
 
     togglePasswordVisibility() {

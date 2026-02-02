@@ -1,138 +1,457 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ReClaim – View Report</title>
+  <title>ReClaim – Report Details</title>
 
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="javascript/view-report.js" defer></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script src="javascript/view-report.js" type="module" defer></script>
 
-  <!-- Fonts -->
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
-    body {
-      font-family: 'Inter', sans-serif;
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-serif { font-family: 'Playfair Display', serif; }
+
+    /* --- 1. Background Animation --- */
+    @keyframes float-1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -50px) scale(1.1); }
+      66% { transform: translate(-20px, 20px) scale(0.9); }
+    }
+    @keyframes float-2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(-30px, 50px) scale(1.1); }
+      66% { transform: translate(20px, -20px) scale(0.9); }
+    }
+    
+    .blob-1 { animation: float-1 20s infinite ease-in-out; }
+    .blob-2 { animation: float-2 25s infinite ease-in-out; }
+
+    /* --- 2. Smooth Entry Animations --- */
+    @keyframes slideUpPremium {
+      0% { opacity: 0; transform: translateY(40px) scale(0.98); filter: blur(10px); }
+      100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    }
+    
+    .animate-entry {
+      opacity: 0; /* Start hidden */
+      animation: slideUpPremium 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
     }
 
-    .font-serif {
-      font-family: 'Playfair Display', serif;
+    /* --- 3. Glass Card Styling --- */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.7); /* Translucent White */
+      backdrop-filter: blur(20px); /* The "Frosted" effect */
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 
+        0 4px 6px -1px rgba(0, 0, 0, 0.02),
+        0 2px 4px -1px rgba(0, 0, 0, 0.02),
+        0 20px 40px -10px rgba(234, 179, 8, 0.05); /* Subtle Gold Glow */
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .btn {
-      transition: all 0.3s ease;
+    .glass-card:hover {
+      transform: translateY(-5px);
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 
+        0 20px 25px -5px rgba(0, 0, 0, 0.05),
+        0 10px 10px -5px rgba(0, 0, 0, 0.01),
+        0 30px 60px -15px rgba(234, 179, 8, 0.15); /* Stronger Gold Glow */
+      border-color: #fff;
     }
 
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+
+    /* ... existing styles ... */
+
+    /* --- 4. PRINT / PDF STYLING (The Magic Part) --- */
+    @media print {
+        /* Hide distractions */
+        body { background: white !important; color: black !important; overflow: visible !important; }
+        .fixed, .absolute, button, #backBtn, #updateBtn, .animate-entry, #imagePlaceholder { 
+            animation: none !important; 
+            transition: none !important; 
+        }
+        
+        /* Hide Background Blobs & Noise */
+        .blob-1, .blob-2, .bg-\[url\(\'https\:\/\/grainy-gradients\.vercel\.app\/noise\.svg\'\)\] {
+            display: none !important;
+        }
+
+        /* Hide Navigation and Buttons */
+        #backBtn, #printBtn, #updateBtn, .glass-card:has(button) {
+            display: none !important;
+        }
+
+        /* Reset Card Styling for Paper */
+        .glass-card {
+            background: white !important;
+            backdrop-filter: none !important;
+            box-shadow: none !important;
+            border: 1px solid #ddd !important;
+            margin-bottom: 20px;
+            break-inside: avoid; /* Prevents card splitting across pages */
+        }
+
+        /* Adjust Grid for A4 Paper */
+        .grid {
+            display: block !important;
+        }
+        .lg\:col-span-5, .lg\:col-span-7 {
+            width: 100% !important;
+            margin-bottom: 20px;
+        }
+
+        /* Typography & Layout Tweaks */
+        h1 { font-size: 24pt !important; color: black !important; margin-bottom: 10px !important; }
+        p, span { color: #333 !important; }
+        
+        /* Image Handling */
+        #itemImage {
+            max-height: 300px;
+            object-fit: contain;
+            border: 1px solid #eee;
+        }
+        
+        /* Add a footer for the PDF */
+        body::after {
+            content: "Generated by ReClaim System • Secure Report";
+            display: block;
+            text-align: center;
+            font-size: 10pt;
+            color: #666;
+            margin-top: 30px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
     }
+
+    
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-serif { font-family: 'Playfair Display', serif; }
+
+    /* --- WEB ANIMATIONS (Existing) --- */
+    @keyframes float-1 { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(30px, -50px) scale(1.1); } 66% { transform: translate(-20px, 20px) scale(0.9); } }
+    @keyframes float-2 { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(-30px, 50px) scale(1.1); } 66% { transform: translate(20px, -20px) scale(0.9); } }
+    .blob-1 { animation: float-1 20s infinite ease-in-out; }
+    .blob-2 { animation: float-2 25s infinite ease-in-out; }
+    @keyframes slideUpPremium { 0% { opacity: 0; transform: translateY(40px) scale(0.98); filter: blur(10px); } 100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+    .animate-entry { opacity: 0; animation: slideUpPremium 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+
+    /* --- WEB CARD STYLING (Existing) --- */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 20px 40px -10px rgba(234, 179, 8, 0.05);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover { transform: translateY(-5px); background: rgba(255, 255, 255, 0.85); box-shadow: 0 30px 60px -15px rgba(234, 179, 8, 0.15); }
+
+    /* =================================================================
+       PROFESSIONAL PRINT SUITE
+       ================================================================= */
+   /* =================================================================
+       PROFESSIONAL PRINT SUITE (CORRECTED)
+       ================================================================= */
+    @media print {
+        @page { margin: 1cm; size: A4; }
+
+        /* 1. RESET & HIDE DISTRACTIONS */
+        /* REMOVED .animate-entry from this list so content shows up! */
+        body { background: white !important; color: #0f172a !important; font-size: 11pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .fixed, .absolute, button, #backBtn, #updateBtn, #imagePlaceholder { display: none !important; }
+        .blob-1, .blob-2, .bg-\[url\(\'https\:\/\/grainy-gradients\.vercel\.app\/noise\.svg\'\)\] { display: none !important; }
+        
+        /* Force animations to stop and be fully visible */
+        .animate-entry {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+            display: block !important;
+        }
+
+        /* 2. SHOW LETTERHEAD */
+        #print-header { display: block !important; }
+
+        /* 3. LAYOUT STRUCTURE */
+        .max-w-6xl { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+        
+        .grid {
+            display: grid !important;
+            grid-template-columns: 35% 60% !important; 
+            gap: 2rem !important;
+            align-items: start !important;
+        }
+
+        /* 4. IMAGE STYLING */
+        .lg\:col-span-5 { 
+            grid-column: 1 !important; 
+            width: 100% !important; 
+            display: block !important; /* Ensure visibility */
+        }
+        
+        #itemImage {
+            display: block !important;
+            border: 2px solid #0f172a !important;
+            border-radius: 4px !important;
+            max-height: 300px;
+            object-fit: cover;
+            width: 100%;
+        }
+
+        /* Clean up the card look for paper */
+        .glass-card {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* 5. DATA TABLE STYLING */
+        .lg\:col-span-7 { 
+            grid-column: 2 !important; 
+            width: 100% !important; 
+            display: block !important; /* Ensure visibility */
+        }
+
+        h1#itemType {
+            font-size: 24pt !important;
+            font-weight: 800 !important;
+            color: #000 !important;
+            margin-bottom: 5px !important;
+            border-bottom: 2px solid #eab308 !important;
+            padding-bottom: 10px !important;
+        }
+
+        #itemDescription {
+            font-size: 11pt !important;
+            color: #334155 !important;
+            background-color: #f8fafc !important;
+            padding: 15px !important;
+            border-left: 4px solid #0f172a !important;
+            margin-bottom: 20px !important;
+        }
+
+        /* Grid Data Layout */
+        .grid-cols-1.sm\:grid-cols-2 {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 15px !important;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            border-radius: 4px;
+        }
+
+        /* Text Sizes */
+        .group p.text-\[10px\] { font-size: 8pt !important; color: #64748b !important; margin-bottom: 2px !important; }
+        .group span.text-xl { font-size: 12pt !important; font-weight: bold !important; color: #000 !important; }
+        .group .w-10 { display: none !important; } /* Hide icons */
+
+        /* 6. FOOTER */
+        body::after {
+            content: "This document is an official record generated by the ReClaim Asset Recovery System.";
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            text-align: center;
+            font-size: 8pt;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+        }
+    }
+  
   </style>
 </head>
 
-<body class="bg-gray-50">
+<body class="bg-slate-50 text-slate-800 min-h-screen relative overflow-x-hidden selection:bg-yellow-500/30">
 
-  <!-- Page Wrapper -->
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-    <!-- Header -->
-    <div class="mb-8">
-      <h1 id="pageTitle" class="font-serif text-4xl font-bold text-gray-900">
-        Report Details
-      </h1>
-      <p class="text-gray-600 mt-2">
-        View complete information about your reported item
-      </p>
+  <div id="print-header" class="hidden print:block mb-8 border-b-2 border-slate-900 pb-6">
+      <div class="flex justify-between items-start">
+          <div class="flex items-center gap-4">
+              <img src="images/logo.png" alt="ReClaim Logo" class="w-16 h-16 object-contain"> 
+              <div></div>
+                  
+                  <p class="text-xs uppercase tracking-[0.2em] font-bold text-slate-500 mt-1">Official Recovery Report</p>
+              </div>
+          </div>
+          <div class="text-right">
+              <div class="inline-block px-4 py-1 border border-slate-900 rounded-sm mb-2">
+                  <p class="text-xs font-bold uppercase">CONFIDENTIAL</p>
+              </div>
+              <p class="text-xs text-slate-500">Generated on: <span id="printDate"></span></p>
+              <p class="text-xs text-slate-500">Report ID: <script>document.write(new URLSearchParams(window.location.search).get("id") || "N/A")</script></p>
+          </div>
+      </div>
+  </div>
+
+
+  <div class="fixed inset-0 overflow-hidden pointer-events-none">
+      <div class="blob-1 absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-b from-amber-100/60 to-transparent rounded-full blur-[100px] -translate-y-1/4 translate-x-1/4"></div>
+      <div class="blob-2 absolute bottom-0 left-0 w-[800px] h-[800px] bg-gradient-to-t from-slate-200/60 to-transparent rounded-full blur-[100px] translate-y-1/4 -translate-x-1/4"></div>
+  </div>
+
+  <div class="fixed inset-0 pointer-events-none opacity-[0.03] mix-blend-multiply z-0">
+      <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+  </div>
+
+  <div class="relative z-10 max-w-6xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
+    
+    <div class="flex items-center justify-between mb-10 animate-entry" style="animation-delay: 0ms;">
+        <button id="backBtn" class="group flex items-center gap-3 px-4 py-2 rounded-full bg-white/50 border border-white hover:bg-white hover:shadow-md transition-all duration-300">
+            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-yellow-500 group-hover:text-white transition-colors">
+                <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform"></i>
+            </div>
+            <span class="text-sm font-semibold text-slate-600 group-hover:text-slate-900">Back</span>
+        </button>
+        
+        <div class="glass-card flex items-center gap-2 px-4 py-2 rounded-full !shadow-sm">
+             <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+             <span class="text-[10px] font-bold tracking-widest uppercase text-slate-500">Secure Connection</span>
+             <i class="fas fa-lock text-slate-400 text-xs ml-1"></i>
+        </div>
     </div>
 
-    <!-- Main Card -->
-    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+        
+        <div class="lg:col-span-5 space-y-8 animate-entry" style="animation-delay: 150ms;">
+            
+            <div class="glass-card p-4 rounded-[2rem] relative group">
+                <div class="aspect-[4/5] rounded-[1.5rem] overflow-hidden bg-slate-100/50 relative border border-slate-100 shadow-inner">
+                    <img id="itemImage" src="" class="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105 hidden" alt="Reported Item" />
+                    
+                    <div id="imagePlaceholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+                        <div class="w-20 h-20 rounded-2xl bg-white shadow-sm flex items-center justify-center mb-4 transform group-hover:scale-110 transition-transform duration-500">
+                            <i class="fas fa-camera text-3xl text-slate-300"></i>
+                        </div>
+                        <span class="text-xs font-bold uppercase tracking-widest opacity-60">No Image Uploaded</span>
+                    </div>
 
-      <!-- Image Section -->
-      <div class="relative h-80 bg-gray-100">
-        <img
-          id="itemImage"
-          src=""
-          alt="Reported Item"
-          class="w-full h-full object-cover hidden"
-        />
+                    <div class="absolute top-5 left-5 z-20">
+                        <span id="itemStatusBadge" class="px-4 py-2 rounded-xl bg-white/95 backdrop-blur-xl border border-white shadow-[0_8px_16px_-4px_rgba(0,0,0,0.1)] text-xs font-bold text-slate-800 flex items-center gap-3">
+                            <span class="relative flex h-2.5 w-2.5">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500"></span>
+                            </span>
+                            <span id="itemStatus" class="tracking-wide">Loading...</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
 
-        <!-- Status Badge -->
-        <div class="absolute top-4 right-4">
-          <span
-            id="itemStatus"
-            class="bg-white/90 backdrop-blur-sm text-gray-900 text-sm font-semibold px-4 py-1.5 rounded-full border border-gray-200">
-            —
-          </span>
-        </div>
-      </div>
-
-      <!-- Content -->
-      <div class="p-8">
-
-        <!-- Item Title -->
-        <h2
-          id="itemType"
-          class="font-serif text-3xl font-semibold text-gray-900 mb-6">
-          —
-        </h2>
-
-        <!-- Details Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-
-          <div>
-            <p class="text-sm text-gray-500 mb-1">Color</p>
-            <p id="itemColor" class="text-lg font-medium text-gray-900">—</p>
-          </div>
-
-          <div>
-            <p class="text-sm text-gray-500 mb-1">Brand</p>
-            <p id="itemBrand" class="text-lg font-medium text-gray-900">—</p>
-          </div>
-
-          <div>
-            <p class="text-sm text-gray-500 mb-1">Reported Date</p>
-            <p id="itemDate" class="text-lg font-medium text-gray-900">—</p>
-          </div>
-
-          <div>
-            <p class="text-sm text-gray-500 mb-1">Location</p>
-            <p id="itemLocation" class="text-lg font-medium text-gray-900">—</p>
-          </div>
-
+            <div class="glass-card p-6 rounded-3xl">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Controls</h3>
+                    <div class="h-px flex-1 bg-slate-200 ml-4"></div>
+                </div>
+                
+                <div class="flex gap-4">
+                    <button id="updateBtn" class="relative overflow-hidden flex-1 py-4 px-6 rounded-xl bg-slate-900 text-white font-bold text-sm shadow-xl shadow-slate-900/10 hover:shadow-slate-900/20 hover:-translate-y-1 active:translate-y-0 transition-all duration-300 group">
+                        <div class="absolute inset-0 bg-gradient-to-r from-slate-800 to-black opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="relative flex items-center justify-center gap-2">
+                            <i class="fas fa-pen-to-square text-yellow-500 group-hover:rotate-12 transition-transform"></i> 
+                            <span>Edit Report</span>
+                        </div>
+                    </button>
+                    
+                    <button id="printBtn" onclick="window.print()" class="w-14 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-slate-800 hover:border-slate-300 hover:shadow-lg transition-all duration-300 flex items-center justify-center group" title="Save as PDF">
+    <i class="fas fa-print group-hover:scale-110 transition-transform"></i>
+</button>
+                </div>
+            </div>
         </div>
 
-        <!-- Description -->
-        <div class="mt-8">
-          <p class="text-sm text-gray-500 mb-2">Description</p>
-          <p
-            id="itemDescription"
-            class="text-gray-700 leading-relaxed">
-            —
-          </p>
+        <div class="lg:col-span-7 space-y-8 animate-entry" style="animation-delay: 300ms;">
+            
+            <div class="glass-card rounded-[2.5rem] p-8 md:p-12 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-yellow-500/5 to-transparent rounded-bl-[100px] -mr-10 -mt-10 pointer-events-none"></div>
+                
+                <div class="relative">
+                    <div class="flex items-center gap-3 mb-6">
+                        <span class="flex h-6 w-1 bg-yellow-500 rounded-full"></span>
+                        <h2 class="text-xs font-bold text-yellow-600 uppercase tracking-[0.2em]">Identification</h2>
+                    </div>
+                    
+                    <h1 id="itemType" class="text-5xl md:text-6xl font-serif font-bold text-slate-900 mb-10 tracking-tight leading-tight">Loading...</h1>
+                    
+                    <div class="mb-12 relative">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-slate-200 rounded-full"></div>
+                        <div class="pl-6">
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Detailed Description</p>
+                            <p id="itemDescription" class="text-slate-600 text-lg leading-relaxed font-light">
+                                Retrieving data from secure database...
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-12 gap-x-8">
+                        
+                        <div class="group cursor-default">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 group-hover:text-yellow-600 transition-colors">Brand / Manufacturer</p>
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:border-yellow-200 group-hover:text-yellow-600 group-hover:shadow-md transition-all duration-300">
+                                    <i class="fas fa-tag"></i>
+                                </div>
+                                <span id="itemBrand" class="text-xl font-bold text-slate-800 group-hover:translate-x-1 transition-transform">—</span>
+                            </div>
+                        </div>
+
+                        <div class="group cursor-default">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 group-hover:text-yellow-600 transition-colors">Primary Color</p>
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:border-yellow-200 group-hover:text-yellow-600 group-hover:shadow-md transition-all duration-300">
+                                    <i class="fas fa-palette"></i>
+                                </div>
+                                <span id="itemColor" class="text-xl font-bold text-slate-800 group-hover:translate-x-1 transition-transform">—</span>
+                            </div>
+                        </div>
+
+                        <div class="group cursor-default">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 group-hover:text-yellow-600 transition-colors">Submission Date</p>
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:border-yellow-200 group-hover:text-yellow-600 group-hover:shadow-md transition-all duration-300">
+                                    <i class="far fa-calendar-alt"></i>
+                                </div>
+                                <span id="itemDate" class="text-xl font-bold text-slate-800 group-hover:translate-x-1 transition-transform">—</span>
+                            </div>
+                        </div>
+
+                        <div class="group cursor-default">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 group-hover:text-yellow-600 transition-colors">Location Context</p>
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:border-yellow-200 group-hover:text-yellow-600 group-hover:shadow-md transition-all duration-300">
+                                    <i class="fas fa-map-pin"></i>
+                                </div>
+                                <span id="itemLocation" class="text-xl font-bold text-slate-800 group-hover:translate-x-1 transition-transform">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6 flex items-center gap-5 border-l-4 border-l-slate-800 group hover:border-l-yellow-500 transition-colors duration-500">
+                <div class="relative w-12 h-12 flex items-center justify-center">
+                    <div class="absolute inset-0 bg-slate-900 rounded-xl group-hover:rotate-6 transition-transform duration-500"></div>
+                    <i class="fas fa-robot text-white relative z-10 text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="text-slate-900 font-bold text-sm mb-1 group-hover:text-yellow-600 transition-colors">AI Matching Active</h3>
+                    <p class="text-slate-500 text-xs leading-relaxed">Neural analysis is running in background. Cross-referencing 50+ data points for potential matches.</p>
+                </div>
+            </div>
+
         </div>
-
-        <!-- Action Buttons -->
-        <div class="flex flex-col sm:flex-row gap-4 mt-10 pt-6 border-t border-gray-100">
-
-          <button
-            id="backBtn"
-            class="btn flex-1 px-6 py-3 text-sm font-medium bg-gray-900 text-white rounded-xl hover:bg-gray-800">
-            Back to My Reports
-          </button>
-
-          <button
-            id="updateBtn"
-            class="btn flex-1 px-6 py-3 text-sm font-medium border-2 border-gray-900 text-gray-900 rounded-xl hover:bg-gray-900 hover:text-white">
-            Update Report
-          </button>
-
-        </div>
-
-      </div>
     </div>
   </div>
+
 </body>
 </html>

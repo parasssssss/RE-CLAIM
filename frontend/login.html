@@ -77,7 +77,41 @@
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
-    </style>
+/* Remember Me Checkbox Styles */
+.remember-me-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: white;
+    position: relative;
+}
+
+.remember-me-checkbox:hover {
+    border-color: #1a1a1a;
+    box-shadow: 0 0 8px rgba(26, 26, 26, 0.1);
+}
+
+.remember-me-checkbox:checked {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    border-color: #1a1a1a;
+    box-shadow: 0 0 12px rgba(26, 26, 26, 0.3);
+}
+
+.remember-me-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+}    </style>
 </head>
 
 <body class="bg-gray-50">
@@ -139,7 +173,17 @@
                         
                     </div>
 
-                    <div class="flex items-center justify-end">
+                    <div class="flex items-center justify-between pt-1">
+                        <div class="flex items-center">
+                            <input
+                                id="rememberMe"
+                                type="checkbox"
+                                class="remember-me-checkbox"
+                            />
+                            <label for="rememberMe" class="ml-3 text-sm font-medium text-gray-700 cursor-pointer select-none">
+                                Remember me
+                            </label>
+                        </div>
                         <div class="text-sm">
                             <a href="forgot_password.html" class="font-medium text-gray-900 hover:text-gray-700 transition">
                                 Forgot your password?

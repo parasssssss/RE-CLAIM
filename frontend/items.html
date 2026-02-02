@@ -1,503 +1,540 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Match Details - ReClaim</title>
-
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-
-    :root {
-      --primary: #6366f1;
-      --secondary: #a855f7;
-    }
-
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      background-color: #f8fafc;
-      /* Dynamic Mesh Gradient */
-      background-image: 
-        radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-        radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
-        radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
-      background-size: 200% 200%;
-      min-height: 100vh;
-      color: #1e293b;
-      overflow-x: hidden;
-      animation: gradient-move 20s ease infinite;
-    }
-
-    @keyframes gradient-move {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-
-    .font-serif { font-family: 'Playfair Display', serif; }
-
-    /* --- Glassmorphism Premium --- */
-    .glass-card {
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.6);
-      border-top: 1px solid rgba(255, 255, 255, 0.9);
-      border-radius: 24px;
-      padding: 30px;
-      box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .glass-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.2);
-      background: rgba(255, 255, 255, 0.95);
-    }
-
-    /* --- Entry Animations --- */
-    @keyframes smoothUp {
-      from { opacity: 0; transform: translateY(30px) scale(0.98); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    .animate-entry {
-      opacity: 0; /* JS will trigger this */
-      animation: smoothUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-    }
-
-    .delay-1 { animation-delay: 0.1s; }
-    .delay-2 { animation-delay: 0.2s; }
-    .delay-3 { animation-delay: 0.3s; }
-
-    /* --- Progress Ring --- */
-    .progress-circle {
-      transform: rotate(-90deg);
-      transform-origin: 50% 50%;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Match Analysis | Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
     
-    .progress-ring-circle {
-      transition: stroke-dashoffset 2s cubic-bezier(0.22, 1, 0.36, 1); /* Much smoother easing */
-    }
+    <style>
+        /* --- CORE THEME --- */
+        :root {
+            --primary: #4f46e5;
+            --secondary: #06b6d4;
+            --accent: #8b5cf6;
+            --glass: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.5);
+        }
 
-    /* --- Image Cards --- */
-    .lost-border { border-top: 4px solid #a855f7; }
-    .found-border { border-top: 4px solid #10b981; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #f3f4f6;
+            overflow-x: hidden;
+            color: #1f2937;
+        }
 
-    .image-box {
-      border-radius: 16px;
-      overflow: hidden;
-      background: #e2e8f0;
-      position: relative;
-      aspect-ratio: 4/3;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-    }
+        .font-tech { font-family: 'Space Grotesk', sans-serif; }
 
-    .image-box img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      opacity: 0; /* Hidden initially for fade-in */
-      transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    }
-    
-    .image-box img.loaded {
-      opacity: 1;
-    }
+        /* --- SMOOTH TRANSITIONS --- */
+        * {
+            transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                        border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                        color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-    .glass-card:hover .image-box img {
-      transform: scale(1.05);
-    }
+        /* --- ANIMATED BACKGROUND --- */
+        .bg-mesh {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1;
+            background: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+            background-size: 200% 200%;
+            animation: gradientMove 20s ease-in-out infinite;
+        }
+        
+        .bg-mesh::before {
+            content: "";
+            position: absolute; inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
 
-    /* --- Timeline --- */
-    .timeline-container { position: relative; padding-left: 20px; }
-    
-    .timeline-track {
-      position: absolute; left: 15px; top: 10px; width: 2px;
-      background: #e2e8f0; z-index: 0; height: 0%;
-      transition: height 1.5s ease-out; /* JS driven now */
-    }
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
 
-    .timeline-node {
-      position: relative; z-index: 2; display: flex; gap: 20px;
-      padding-bottom: 35px; opacity: 0; transform: translateX(-10px);
-      transition: all 0.5s ease-out;
-    }
-    
-    .timeline-node.visible { opacity: 1; transform: translateX(0); }
+        /* --- GLASS CARDS --- */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
 
-    .node-circle {
-      width: 32px; height: 32px; border-radius: 50%; background: white;
-      border: 3px solid #cbd5e1; flex-shrink: 0; display: flex;
-      align-items: center; justify-content: center; transition: all 0.3s;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-    
-    .timeline-node:hover .node-circle { transform: scale(1.1); }
-    .node-active .node-circle { border-color: #6366f1; background: #6366f1; color: white; animation: radar-ping 2s infinite; }
-    .node-completed .node-circle { border-color: #10b981; background: #10b981; color: white; }
+        .glass-panel:hover {
+            box-shadow: 0 12px 48px 0 rgba(79, 70, 229, 0.2);
+            transform: translateY(-2px);
+        }
 
-    @keyframes radar-ping {
-      0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
-      70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
-    }
+        /* --- ANIMATIONS --- */
+        .slide-up { 
+            animation: slideUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; 
+            opacity: 0; 
+            transform: translateY(30px); 
+        }
+        .delay-100 { animation-delay: 0.1s; }
+        .delay-200 { animation-delay: 0.2s; }
+        .delay-300 { animation-delay: 0.3s; }
 
-    /* Back Button */
-    .back-btn {
-      position: fixed; top: 30px; left: 30px; width: 50px; height: 50px;
-      border-radius: 50%; background: rgba(255,255,255,0.8); backdrop-filter: blur(10px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center;
-      cursor: pointer; z-index: 100; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      border: 1px solid rgba(255,255,255,0.8);
-    }
-    .back-btn:hover { transform: scale(1.15) rotate(-90deg); background: white; color: #6366f1; }
+        @keyframes slideUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-    /* Status Badges */
-    .status-badge {
-        padding: 6px 16px; border-radius: 99px; font-weight: 700; font-size: 0.8rem;
-        letter-spacing: 0.05em; text-transform: uppercase; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        transition: transform 0.2s;
-    }
-    .status-badge:hover { transform: scale(1.05); }
-    .status-pending { background: linear-gradient(135deg, #fbbf24, #d97706); color: white; }
-    .status-approved { background: linear-gradient(135deg, #10b981, #059669); color: white; }
-    .status-rejected { background: linear-gradient(135deg, #ef4444, #b91c1c); color: white; }
+        /* Scanner Effect */
+        .scanner-line {
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(to right, transparent, #4f46e5, transparent);
+            box-shadow: 0 0 15px #4f46e5;
+            animation: scan 4s ease-in-out infinite;
+            z-index: 10;
+            opacity: 0.6;
+        }
+        @keyframes scan {
+            0%, 100% { top: 0%; opacity: 0; }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.8; }
+            100% { top: 100%; opacity: 0; }
+        }
 
-    /* Skeleton Loading */
-    .skeleton {
-      background: #e2e8f0;
-      background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%);
-      border-radius: 8px;
-      background-size: 200% 100%;
-      animation: 1.5s shine linear infinite;
-      color: transparent !important;
-    }
-    @keyframes shine {
-      to { background-position-x: -200%; }
-    }
-  </style>
+        /* Skeleton Shimmer */
+        .skeleton {
+            background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+            background-size: 200% 100%;
+            animation: shimmer 2s ease-in-out infinite;
+            color: transparent !important;
+            border-radius: 6px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Smooth Group Hover Effects */
+        .group-hover\:scale-110 {
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Smooth Button Transitions */
+        button {
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Smooth Icon Transitions */
+        i {
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Smooth Image Transitions */
+        img {
+            transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Smooth Opacity & Grayscale */
+        .opacity-50 {
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .grayscale {
+            transition: filter 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
 </head>
+<body class="min-h-screen">
+    
+    <div class="bg-mesh"></div>
 
-<body class="p-4 md:p-12">
-
-<div class="back-btn" onclick="history.back()">
-  <i class="fas fa-arrow-left text-gray-700 text-lg"></i>
-</div>
-
-<div class="max-w-7xl mx-auto space-y-8" id="mainContent">
-  
-  <div class="glass-card animate-entry">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-      
-      <div>
-        <div class="inline-flex items-center gap-2 mb-3 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
-          <span class="relative flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-          </span>
-          <span class="text-xs font-bold text-indigo-700 tracking-wide uppercase">AI Match Analysis</span>
-        </div>
-        <h1 class="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-2 tracking-tight">
-          Potential Match Found
-        </h1>
-        <p class="text-gray-500 font-medium flex items-center gap-2">
-          <span>Match ID: <span id="displayMatchId" class="skeleton">#----</span></span> 
-          <span class="w-1 h-1 rounded-full bg-gray-400"></span>
-          <span id="displayDate" class="skeleton">Loading...</span>
-        </p>
-      </div>
-
-      <div class="flex items-center gap-5 bg-white/60 p-5 rounded-2xl border border-white shadow-sm hover:shadow-md transition-shadow">
-        <div class="relative w-16 h-16">
-            <svg class="w-full h-full progress-circle" viewBox="0 0 100 100">
-                <circle class="text-gray-200 stroke-current" stroke-width="8" cx="50" cy="50" r="45" fill="transparent"></circle>
-                <circle id="scoreRing" class="text-indigo-600 stroke-current progress-ring-circle" stroke-width="8" stroke-linecap="round" cx="50" cy="50" r="45" fill="transparent" stroke-dasharray="283" stroke-dashoffset="283"></circle>
-            </svg>
-            <div class="absolute inset-0 flex items-center justify-center">
-                <span id="scoreText" class="text-sm font-bold text-indigo-900">0%</span>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        
+        <div class="flex justify-between items-center mb-10 slide-up">
+            <button onclick="history.back()" class="group flex items-center gap-3 px-5 py-2.5 rounded-full glass-panel hover:bg-white transition-all duration-300">
+                <i class="fas fa-arrow-left text-gray-500 group-hover:-translate-x-1 transition-transform"></i>
+                <span class="font-bold text-gray-700">Back to Dashboard</span>
+            </button>
+            <div class="hidden md:flex items-center gap-2 px-4 py-2 bg-black/20 rounded-full backdrop-blur-sm border border-white/10">
+                <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span class="text-xs font-mono text-white/90 tracking-widest">SYSTEM ONLINE</span>
             </div>
         </div>
-        <div class="flex flex-col">
-            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Similarity Score</span>
-            <span id="matchStatus" class="status-badge status-pending mt-1 text-center skeleton">...</span>
-        </div>
-      </div>
 
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <div class="lg:col-span-8 space-y-6">
+                
+                <div class="glass-panel rounded-3xl p-8 relative overflow-hidden slide-up delay-100">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                    
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
+                        <div>
+                            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-100/50 border border-indigo-200 text-indigo-700 mb-3">
+                                <i class="fas fa-microchip animate-pulse"></i>
+                                <span class="text-xs font-bold uppercase tracking-wider">AI Verification Protocol</span>
+                            </div>
+                            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight mb-2">
+                                Match <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-cyan-500">Analysis</span>
+                            </h1>
+                            <div class="flex items-center gap-4 text-sm font-medium text-gray-500">
+                                <span class="bg-white/50 px-2 py-1 rounded border border-gray-200">ID: <span id="displayMatchId" class="skeleton">----</span></span>
+                                <span class="text-gray-300">|</span>
+                                <span id="displayDate" class="skeleton">Loading Date...</span>
+                            </div>
+                        </div>
+
+                        <div class="relative group">
+                            <div class="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full group-hover:bg-indigo-500/30 transition-all duration-500"></div>
+                            <svg class="w-32 h-32 transform -rotate-90 relative z-10 drop-shadow-lg">
+                                <circle cx="64" cy="64" r="56" stroke="white" stroke-width="8" fill="white" class="opacity-90 shadow-sm" />
+                                <circle cx="64" cy="64" r="56" stroke="#e5e7eb" stroke-width="8" fill="transparent" />
+                                <circle id="scoreRing" cx="64" cy="64" r="56" stroke="url(#gradient)" stroke-width="8" stroke-linecap="round" fill="transparent" stroke-dasharray="351" stroke-dashoffset="351" class="transition-all duration-1000 ease-out" />
+                                <defs>
+                                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stop-color="#4f46e5" />
+                                        <stop offset="100%" stop-color="#06b6d4" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center z-20">
+                                <span id="scoreText" class="text-3xl font-black text-gray-800 tracking-tighter">0%</span>
+                                <span class="text-[10px] uppercase font-bold text-gray-400">Similarity</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-3xl overflow-hidden shadow-xl slide-up delay-200 border-0">
+    <div class="bg-gray-900/5 px-6 py-4 border-b border-gray-200/50 flex justify-between items-center backdrop-blur-sm">
+        <h3 class="font-bold text-lg text-gray-800 flex items-center gap-2">
+            <i class="far fa-eye text-indigo-600"></i> Visual Evidence
+        </h3>
+        <div class="flex gap-2">
+            <div class="w-3 h-3 rounded-full bg-red-400"></div>
+            <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+            <div class="w-3 h-3 rounded-full bg-green-400"></div>
+        </div>
     </div>
-  </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-    <div class="glass-card lost-border animate-entry delay-1">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-serif font-bold text-gray-800">Lost Item</h2>
-        <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 shadow-sm">
-            <i class="fas fa-search"></i>
-        </div>
-      </div>
-
-      <div class="image-box mb-6 shadow-inner group">
-        <img id="lostImage" src="" alt="Lost Item" onload="this.classList.add('loaded')">
-        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-             <span class="text-white text-sm font-medium"><i class="fas fa-camera mr-2"></i>User Upload</span>
-        </div>
-      </div>
-
-      <div class="space-y-1">
-        <div class="info-row">
-            <span class="info-label">Title</span>
-            <span id="lostTitle" class="info-value skeleton">Loading...</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Color</span>
-            <span id="lostColor" class="info-value skeleton">...</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Brand</span>
-            <span id="lostBrand" class="info-value skeleton">...</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Location</span>
-            <span id="lostLocation" class="info-value truncate max-w-[200px] skeleton">...</span>
-        </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 relative bg-white">
         
-        <div class="mt-4 pt-4 border-t border-gray-100">
-            <span class="info-label block mb-2">Description</span>
-            <p id="lostDescription" class="text-sm text-gray-600 leading-relaxed bg-purple-50/40 p-3 rounded-xl border border-purple-100/50 skeleton">Loading description...</p>
+        <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 hidden md:flex flex-col items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_0_20px_rgba(0,0,0,0.1)] border-4 border-gray-50">
+            <span class="font-black text-indigo-600 italic text-sm">VS</span>
         </div>
-      </div>
+
+        <div class="p-8 border-b md:border-b-0 md:border-r border-gray-100 group relative">
+            <div class="absolute top-4 left-4 z-10 bg-purple-100/90 text-purple-700 px-3 py-1 rounded-full text-xs font-bold border border-purple-200 backdrop-blur-sm">
+                REPORTED LOST
+            </div>
+            
+            <div class="w-full h-72 bg-gray-50 rounded-2xl overflow-hidden relative border border-gray-200 shadow-sm">
+                <div class="scanner-line"></div> 
+                <img 
+                    id="lostImage" 
+                    src="" 
+                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                    onerror="this.onerror=null; this.src='https://via.placeholder.com/400?text=No+Image'"
+                >
+            </div>
+
+            <div class="mt-6">
+                <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Item Details</h4>
+                <h3 id="lostTitle" class="text-xl font-bold text-gray-900 skeleton w-3/4 h-8 mb-2">Loading...</h3>
+                <p id="lostDescription" class="text-gray-500 text-sm leading-relaxed skeleton h-12">...</p>
+            </div>
+        </div>
+
+        <div class="p-8 bg-indigo-50/30 group relative">
+            <div class="absolute top-4 right-4 z-10 bg-teal-100/90 text-teal-700 px-3 py-1 rounded-full text-xs font-bold border border-teal-200 backdrop-blur-sm">
+                INVENTORY MATCH
+            </div>
+            
+            <div class="w-full h-72 bg-white rounded-2xl overflow-hidden relative border border-gray-200 shadow-sm">
+                <div class="scanner-line" style="animation-delay: 1.5s;"></div> 
+                <img 
+                    id="foundImage" 
+                    src="" 
+                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                    onerror="this.onerror=null; this.src='https://via.placeholder.com/400?text=No+Image'"
+                >
+            </div>
+
+            <div class="mt-6 text-right md:text-left">
+                <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Item Details</h4>
+                <h3 id="foundTitle" class="text-xl font-bold text-gray-900 skeleton w-3/4 h-8 mb-2">Loading...</h3>
+                <p id="foundDescription" class="text-gray-500 text-sm leading-relaxed skeleton h-12">...</p>
+            </div>
+        </div>
     </div>
-
-    <div class="glass-card found-border animate-entry delay-2">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-serif font-bold text-gray-800">Found Item</h2>
-        <div class="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 shadow-sm">
-            <i class="fas fa-check"></i>
-        </div>
-      </div>
-
-      <div class="image-box mb-6 shadow-inner group">
-        <img id="foundImage" src="" alt="Found Item" onload="this.classList.add('loaded')">
-        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-            <span class="text-white text-sm font-medium"><i class="fas fa-database mr-2"></i>Database Match</span>
-       </div>
-      </div>
-
-      <div class="space-y-1">
-        <div class="info-row">
-            <span class="info-label">Title</span>
-            <span id="foundTitle" class="info-value skeleton">Loading...</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Color</span>
-            <span id="foundColor" class="info-value skeleton">...</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Brand</span>
-            <span id="foundBrand" class="info-value skeleton">...</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Found At</span>
-            <span id="foundLocation" class="info-value truncate max-w-[200px] skeleton">...</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Reporter</span>
-            <span id="foundReporter" class="info-value skeleton">...</span>
-        </div>
-        
-        <div class="mt-4 pt-4 border-t border-gray-100">
-            <span class="info-label block mb-2">Description</span>
-            <p id="foundDescription" class="text-sm text-gray-600 leading-relaxed bg-teal-50/40 p-3 rounded-xl border border-teal-100/50 skeleton">Loading description...</p>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="glass-card animate-entry delay-3">
-    <div class="flex items-center gap-3 mb-8 border-b border-gray-100 pb-4">
-      <h3 class="text-xl font-bold text-gray-800">Verification Timeline</h3>
-      <span class="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Live Updates</span>
-    </div>
-
-    <div class="timeline-container relative">
-      <div id="timelineTrack" class="timeline-track"></div>
-
-      <div id="node1" class="timeline-node node-completed">
-        <div class="node-circle"><i class="fas fa-file-upload text-xs"></i></div>
-        <div>
-           <h4 class="font-bold text-gray-900 text-sm">Item Reported</h4>
-           <p class="text-xs text-gray-500 mt-1">Lost item submitted by user</p>
-        </div>
-      </div>
-
-      <div id="node2" class="timeline-node node-completed">
-        <div class="node-circle"><i class="fas fa-robot text-xs"></i></div>
-        <div>
-           <h4 class="font-bold text-gray-900 text-sm">AI Analysis Complete</h4>
-           <p id="aiAnalysisText" class="text-xs text-gray-500 mt-1">Similarity check completed</p>
-        </div>
-      </div>
-
-      <div id="node3" class="timeline-node node-active">
-        <div class="node-circle"> <i class="fas fa-hourglass-half text-xs"></i></div>
-        <div>
-           <h4 class="font-bold text-indigo-600 text-sm">Verification Status</h4>
-           <p id="finalStatusText" class="text-xs text-gray-600 mt-1">Waiting for confirmation.</p>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
 </div>
 
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const params = new URLSearchParams(window.location.search);
-  const matchId = params.get("match_id");
-  const token = localStorage.getItem("token");
-  const userName = localStorage.getItem("username") || "You";
+                <div class="glass-panel rounded-3xl p-8 slide-up delay-300">
+                    <h3 class="font-bold text-lg text-gray-800 mb-6">Metadata Comparison</h3>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-3 gap-4 items-center p-3 rounded-xl hover:bg-white/60 transition-colors border border-transparent hover:border-gray-100">
+                            <div class="text-gray-400 font-bold text-xs uppercase tracking-widest text-center md:text-left">Brand</div>
+                            <div id="lostBrand" class="font-mono text-sm font-semibold text-gray-800 skeleton text-center md:text-left">...</div>
+                            <div id="foundBrand" class="font-mono text-sm font-semibold text-indigo-700 skeleton text-center md:text-left">...</div>
+                        </div>
+                        <div class="h-px bg-gray-200/60 w-full"></div>
+                        
+                        <div class="grid grid-cols-3 gap-4 items-center p-3 rounded-xl hover:bg-white/60 transition-colors border border-transparent hover:border-gray-100">
+                            <div class="text-gray-400 font-bold text-xs uppercase tracking-widest text-center md:text-left">Color</div>
+                            <div id="lostColor" class="font-mono text-sm font-semibold text-gray-800 skeleton text-center md:text-left">...</div>
+                            <div id="foundColor" class="font-mono text-sm font-semibold text-indigo-700 skeleton text-center md:text-left">...</div>
+                        </div>
+                        <div class="h-px bg-gray-200/60 w-full"></div>
 
-  if (!matchId || !token) {
-    alert("Invalid access. Please log in.");
-    window.location.href = 'index.html'; // Redirect if broken
-    return;
-  }
+                        <div class="grid grid-cols-3 gap-4 items-center p-3 rounded-xl hover:bg-white/60 transition-colors border border-transparent hover:border-gray-100">
+                            <div class="text-gray-400 font-bold text-xs uppercase tracking-widest text-center md:text-left">Location</div>
+                            <div id="lostLocation" class="font-mono text-sm font-semibold text-gray-800 skeleton text-center md:text-left">...</div>
+                            <div id="foundLocation" class="font-mono text-sm font-semibold text-indigo-700 skeleton text-center md:text-left">...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-  function formatDate(dateString) {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short", day: "numeric", year: "numeric"
-    });
-  }
+            <div class="lg:col-span-4 space-y-6">
+                
+                <div class="glass-panel rounded-3xl p-6 sticky top-6 slide-up delay-300">
+                    <div class="mb-6">
+                        <h3 class="font-bold text-xl text-gray-900">Verification Status</h3>
+                        <p class="text-sm text-gray-500 mt-1">Live updates from system</p>
+                    </div>
 
-  // Helper to remove skeleton classes
-  function removeSkeleton(id) {
-    const el = document.getElementById(id);
-    if(el) el.classList.remove('skeleton');
-  }
+                    <div class="space-y-6 relative pl-2">
+                        <div class="absolute left-[19px] top-3 bottom-8 w-0.5 bg-gray-200"></div>
 
-  // Animate Number Counter
-  function animateValue(obj, start, end, duration) {
-    let startTimestamp = null;
-    const step = (timestamp) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      // Easing function (easeOutQuad)
-      const easeProgress = 1 - (1 - progress) * (1 - progress);
-      
-      obj.innerHTML = Math.floor(progress * (end - start) + start) + "%";
-      if (progress < 1) {
-        window.requestAnimationFrame(step);
-      }
+                        <div class="relative flex items-start gap-4 opacity-50 grayscale transition-all duration-500" id="step1">
+                            <div class="w-10 h-10 rounded-full bg-white border-2 border-green-500 flex items-center justify-center text-green-500 z-10 shadow-sm flex-shrink-0">
+                                <i class="fas fa-file-upload text-sm"></i>
+                            </div>
+                            <div class="pt-2">
+                                <h4 class="font-bold text-gray-800 text-sm">Item Reported</h4>
+                                <span class="text-xs text-gray-400">Database entry created</span>
+                            </div>
+                        </div>
+
+                        <div class="relative flex items-start gap-4 opacity-50 grayscale transition-all duration-500" id="step2">
+                            <div class="w-10 h-10 rounded-full bg-white border-2 border-indigo-500 flex items-center justify-center text-indigo-500 z-10 shadow-sm flex-shrink-0">
+                                <i class="fas fa-brain text-sm"></i>
+                            </div>
+                            <div class="pt-2">
+                                <h4 class="font-bold text-gray-800 text-sm">AI Analysis</h4>
+                                <span class="text-xs text-gray-400" id="aiStatusText">Processing vectors...</span>
+                            </div>
+                        </div>
+
+                        <div class="relative flex items-start gap-4 opacity-50 transition-all duration-500" id="step3">
+                            <div class="w-10 h-10 rounded-full bg-white border-2 border-gray-300 flex items-center justify-center text-gray-400 z-10 shadow-sm flex-shrink-0" id="statusIcon">
+                                <i class="fas fa-flag text-sm"></i>
+                            </div>
+                            <div class="pt-2">
+                                <h4 class="font-bold text-gray-800 text-sm" id="finalStatusTitle">Pending Decision</h4>
+                                <span class="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500 uppercase" id="statusBadge">WAITING</span>
+                            </div>
+
+                            
+                        </div>
+                        <div class="p-6 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl text-white shadow-lg slide-up delay-300">
+                    <i class="fas fa-shield-alt text-3xl mb-3 opacity-80"></i>
+                    <h4 class="font-bold text-lg mb-2">System Confidence</h4>
+                    <p class="text-indigo-100 text-sm opacity-90 leading-relaxed">
+                        The AI has identified significant visual and metadata correlations. Please review the images carefully before claiming.
+                    </p>
+                 </div>
+                    </div>
+                </div>
+
+                
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const params = new URLSearchParams(window.location.search);
+            const matchId = params.get("match_id");
+            const token = localStorage.getItem("token");
+            
+            // --- UI ANIMATION HELPERS ---
+            function animateScore(target) {
+                const circle = document.getElementById('scoreRing');
+                const text = document.getElementById('scoreText');
+                const radius = 56;
+                const circumference = 2 * Math.PI * radius; // ~351
+                const offset = circumference - (target / 100) * circumference;
+                
+                // Color Logic
+                let color1 = "#4f46e5"; // Indigo
+                let color2 = "#06b6d4"; // Cyan
+                
+                if(target > 80) { color1="#16a34a"; color2="#4ade80"; } // Green
+                else if(target < 50) { color1="#ea580c"; color2="#facc15"; } // Orange/Yellow
+
+                // Update Gradient
+                const gradient = document.getElementById('gradient');
+                gradient.innerHTML = `<stop offset="0%" stop-color="${color1}" /><stop offset="100%" stop-color="${color2}" />`;
+
+                // Animate Ring
+                setTimeout(() => {
+                    circle.style.strokeDashoffset = offset;
+                }, 500);
+
+                // Count Up Number
+                let start = 0;
+                const duration = 2000;
+                const startTime = performance.now();
+                
+                function update(currentTime) {
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    // EaseOutExpo
+                    const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+                    
+                    text.innerText = Math.floor(start + (target - start) * ease) + "%";
+                    
+                    if (progress < 1) requestAnimationFrame(update);
+                }
+                requestAnimationFrame(update);
+            }
+
+            function updateTimeline(status, score) {
+                const s1 = document.getElementById('step1');
+                const s2 = document.getElementById('step2');
+                const s3 = document.getElementById('step3');
+                
+                // Activate Step 1
+                setTimeout(() => { 
+                    s1.classList.remove('opacity-50', 'grayscale'); 
+                }, 200);
+
+                // Activate Step 2
+                setTimeout(() => { 
+                    s2.classList.remove('opacity-50', 'grayscale');
+                    document.getElementById('aiStatusText').textContent = `Vector Match: ${score}%`;
+                }, 800);
+
+                // Activate Step 3
+                setTimeout(() => {
+                    s3.classList.remove('opacity-50');
+                    const iconBox = document.getElementById('statusIcon');
+                    const badge = document.getElementById('statusBadge');
+                    const title = document.getElementById('finalStatusTitle');
+                    const icon = iconBox.querySelector('i');
+
+                    if(status === 'APPROVED' || status === 'RECLAIMED') {
+                        iconBox.className = "w-10 h-10 rounded-full bg-green-500 border-2 border-green-600 flex items-center justify-center text-white z-10 shadow-lg shadow-green-500/40 transform scale-110 transition-transform";
+                        icon.className = "fas fa-check";
+                        title.textContent = status === 'RECLAIMED' ? "Item Claimed" : "Match Verified";
+                        badge.className = "inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 border border-green-200";
+                        badge.textContent = status;
+                    } else if (status === 'REJECTED') {
+                        iconBox.className = "w-10 h-10 rounded-full bg-red-500 border-2 border-red-600 flex items-center justify-center text-white z-10 shadow-lg shadow-red-500/40";
+                        icon.className = "fas fa-times";
+                        title.textContent = "Match Rejected";
+                        badge.className = "inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200";
+                        badge.textContent = "REJECTED";
+                    } else {
+                        // Pending
+                        iconBox.className = "w-10 h-10 rounded-full bg-white border-2 border-yellow-400 flex items-center justify-center text-yellow-500 z-10 shadow-sm animate-pulse";
+                        icon.className = "fas fa-clock";
+                    }
+                }, 1600);
+            }
+
+            // --- DATA LOADING ---
+            async function loadData() {
+                try {
+                    // MOCK DATA for Demo Purposes if API fails (Remove in production)
+                    // const match = { match_id: "1024", created_at: new Date(), similarity_score: 0.88, status: "APPROVED", lost: { item_type: "MacBook Pro", brand: "Apple", color: "Space Grey", image_path: "", description: "Left in library", lost_location: "Library" }, found: { item_type: "Laptop", brand: "Apple", color: "Grey", image_path: "", description: "Found on table 4", lost_location: "Central Lib" }};
+                    
+                    const res = await fetch(`http://127.0.0.1:8000/matches/match/${matchId}`, {
+                        headers: { Authorization: "Bearer " + token }
+                    });
+                    if(!res.ok) throw new Error("API Error");
+                    const match = await res.json();
+                    
+                    const lost = match.lost;
+                    const found = match.found;
+                    const score = Math.round((match.similarity_score || 0) * 100);
+
+                    // Fill Header
+                    document.getElementById('displayMatchId').textContent = match.match_id;
+                    document.getElementById('displayMatchId').classList.remove('skeleton');
+                    document.getElementById('displayDate').textContent = new Date(match.created_at).toLocaleDateString();
+                    document.getElementById('displayDate').classList.remove('skeleton');
+
+                    // Fill Fields
+                    const setText = (id, txt) => {
+                        const el = document.getElementById(id);
+                        if(el) {
+                            el.textContent = txt || "--";
+                            el.classList.remove('skeleton');
+                        }
+                    };
+
+                    setText('lostTitle', lost.item_type);
+                    setText('lostDescription', lost.description);
+                    setText('lostBrand', lost.brand);
+                    setText('lostColor', lost.color);
+                    setText('lostLocation', lost.lost_location);
+
+                    setText('foundTitle', found.item_type);
+                    setText('foundDescription', found.description);
+                    setText('foundBrand', found.brand);
+                    setText('foundColor', found.color);
+                    setText('foundLocation', found.lost_location);
+
+                    // Images
+                    // Images
+const setImg = (id, path) => {
+    const img = document.getElementById(id);
+    
+    // Define the fallback URL
+    const fallback = "https://via.placeholder.com/400?text=No+Image";
+
+    // Prevent loop if fallback fails
+    img.onerror = () => {
+        img.onerror = null; // STOP THE LOOP
+        img.src = fallback;
     };
-    window.requestAnimationFrame(step);
-  }
 
-  // Trigger Timeline Animations
-  function triggerTimeline() {
-    setTimeout(() => { document.getElementById('timelineTrack').style.height = '90%'; }, 500);
-    setTimeout(() => { document.getElementById('node1').classList.add('visible'); }, 800);
-    setTimeout(() => { document.getElementById('node2').classList.add('visible'); }, 1300);
-    setTimeout(() => { document.getElementById('node3').classList.add('visible'); }, 1800);
-  }
-
-  async function loadMatch() {
-    try {
-      // NOTE: Ensure your API returns 'similarity_score' in the response!
-      const res = await fetch(`http://127.0.0.1:8000/matches/match/${matchId}`, {
-        headers: { Authorization: "Bearer " + token }
-      });
-
-      if (!res.ok) throw new Error("Failed to fetch match");
-
-      const match = await res.json();
-      const lost = match.lost;
-      const found = match.found;
-
-      // 1. Header Data
-      const score = match.similarity_score ? Math.round(match.similarity_score*100) : 0; 
-      
-      document.getElementById("displayMatchId").textContent = "#" + match.match_id;
-      document.getElementById("displayDate").textContent = formatDate(match.created_at);
-      removeSkeleton("displayMatchId");
-      removeSkeleton("displayDate");
-
-      // 2. Animate Similarity Score (Ring & Text)
-      const circle = document.getElementById('scoreRing');
-      const radius = circle.r.baseVal.value;
-      const circumference = radius * 2 * Math.PI;
-      const offset = circumference - (score / 100) * circumference;
-
-      // Trigger animation after short delay
-      setTimeout(() => {
-        circle.style.strokeDashoffset = offset;
-        animateValue(document.getElementById("scoreText"), 0, score, 2000);
-      }, 500);
-
-      // 3. Status Badge
-      const statusEl = document.getElementById("matchStatus");
-      statusEl.textContent = match.status;
-      removeSkeleton("matchStatus");
-      
-      statusEl.className = `status-badge text-center ${
-        match.status === "APPROVED" ? "status-approved" :
-        match.status === "REJECTED" ? "status-rejected" : "status-pending"
-      }`;
-
-      // 4. Populate Details (and remove skeletons)
-      const fields = [
-        { id: "lostTitle", val: lost.item_type },
-        { id: "lostColor", val: lost.color },
-        { id: "lostBrand", val: lost.brand },
-        { id: "lostLocation", val: lost.lost_location },
-        { id: "lostDescription", val: lost.description },
-        { id: "foundTitle", val: found.item_type },
-        { id: "foundColor", val: found.color },
-        { id: "foundBrand", val: found.brand },
-        { id: "foundLocation", val: found.lost_location },
-        { id: "foundReporter", val: userName }, // Or specific reporter if available
-        { id: "foundDescription", val: found.description },
-      ];
-
-      fields.forEach(f => {
-        const el = document.getElementById(f.id);
-        if(el) {
-          el.textContent = f.val || "N/A";
-          el.classList.remove("skeleton");
-        }
-      });
-
-      // 5. Images
-      if (lost.image_path) document.getElementById("lostImage").src = `http://127.0.0.1:8000/${lost.image_path}`;
-      else document.getElementById("lostImage").src = "https://via.placeholder.com/400x300?text=No+Image";
-      
-      if (found.image_path) document.getElementById("foundImage").src = `http://127.0.0.1:8000/${found.image_path}`;
-      else document.getElementById("foundImage").src = "https://via.placeholder.com/400x300?text=No+Image";
-
-      // 6. Timeline Updates
-      document.getElementById("aiAnalysisText").textContent = `${score}% similarity detected`;
-      document.getElementById("finalStatusText").textContent = `Status: ${match.status}`;
-
-      triggerTimeline();
-
-    } catch (err) {
-      console.error(err);
-      alert("Error loading match data.");
+    if(path) {
+        img.src = `http://127.0.0.1:8000/${path}`;
+    } else {
+        img.src = fallback;
     }
-  }
+};
+                    setImg('lostImage', lost.image_path);
+                    setImg('foundImage', found.image_path);
 
-  loadMatch();
-});
-</script>
+                    // Trigger Animations
+                    animateScore(score);
+                    updateTimeline(match.status, score);
 
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            if(matchId) loadData();
+        });
+    </script>
 </body>
 </html>

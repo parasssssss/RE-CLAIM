@@ -56,7 +56,7 @@ export class ProfileDropdown {
                         
                         <div class="menu-label">My Account</div>
 
-                        <a href="profile.html" class="menu-item group" style="--delay: 1;">
+                        <a href="admin_settings.html" class="menu-item group" style="--delay: 1;">
                             <div class="icon-box group-hover:bg-slate-900 group-hover:text-yellow-400">
                                 <i class="fas fa-user-astronaut"></i>
                             </div>
@@ -257,7 +257,7 @@ export class ProfileDropdown {
         const targets = [
             document.querySelector('.flex.items-center.space-x-4'),
             document.querySelector('#user-menu-container'),
-            document.querySelector('.relative > a[href="profile.html"]')?.parentElement
+            document.querySelector('.relative > a[href="admin_settings.html"]')?.parentElement
         ];
 
         const target = targets.find(t => t !== null);
@@ -266,7 +266,7 @@ export class ProfileDropdown {
             if (target.tagName === 'DIV' && target.classList.contains('relative')) {
                 target.outerHTML = this.dropdownHTML;
             } else {
-                const innerProfile = target.querySelector('a[href="profile.html"]');
+                const innerProfile = target.querySelector('a[href="admin_settings.html"]');
                 if (innerProfile && innerProfile.parentElement) {
                     innerProfile.parentElement.outerHTML = this.dropdownHTML;
                 } else {

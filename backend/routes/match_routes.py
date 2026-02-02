@@ -1,6 +1,6 @@
 from typing import List
 from sqlalchemy import or_
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 import crud
@@ -8,6 +8,11 @@ from utils.ai_match import match_items
 import models, schemas
 from database import get_db
 from auth import get_current_user
+from email_utils import create_notification, send_match_found_task
+from fastapi import File, UploadFile, HTTPException
+from PIL import Image as PILImage
+import io
+import utils.ai_match as ai_match # Import the file we just updated
 
 router = APIRouter(prefix="/matches", tags=["Matches"])
 
@@ -36,50 +41,42 @@ def run_ai_matching(business_id: int, db: Session = Depends(get_db)):
 
 @router.get("/matches", response_model=List[schemas.MatchResponse])
 def get_ai_matches(
+    background_tasks: BackgroundTasks,
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     # 1. Start the query by joining Match -> Found Item
-    # We join on 'found_item_id' because the Business "possesses" the found item.
     matches_query = db.query(models.Match).join(
         models.Item, models.Match.found_item_id == models.Item.item_id
     )
 
-    # 🛑 LOGIC FIX START 🛑
-    
     # CASE A: Business Admin (Role 2) or Staff (Role 3)
-    # They should ONLY see matches where the found item belongs to THEIR Business.
     if current_user.role_id in [2, 3]: 
         if not current_user.business_id:
-            return [] # Safety check
-            
+            return []
         matches_query = matches_query.filter(
             models.Item.business_id == current_user.business_id
         )
 
     # CASE B: Normal User (Role 4)
-    # They should see matches where the LOST item belongs to THEM.
     elif current_user.role_id == 4:
         user_lost_items = db.query(models.Item.item_id).filter(
             models.Item.user_id == current_user.user_id
         ).subquery()
-        
         matches_query = matches_query.filter(
             models.Match.lost_item_id.in_(user_lost_items)
         )
-        
-    # 🛑 LOGIC FIX END 🛑
 
     matches = matches_query.all()
-
     result = []
+
     for match in matches:
         lost_item = db.query(models.Item).filter(models.Item.item_id == match.lost_item_id).first()
         found_item = db.query(models.Item).filter(models.Item.item_id == match.found_item_id).first()
 
-        # ✅ Notification Logic (Kept as is)
-        # Note: Ideally, this should be in a background task, not a GET request, 
-        # but leaving it here to preserve your existing flow.
+        # ✅ FIXED NOTIFICATION LOGIC
+        
+        # 1. Check for duplicates
         existing_notif = db.query(models.Notification).filter_by(
             user_id=current_user.user_id,
             match_id=match.match_id,
@@ -87,8 +84,24 @@ def get_ai_matches(
         ).first()
 
         if not existing_notif:
-            from email_utils import notify_match_found # Import here to avoid circular dependency
-            notify_match_found(db, current_user, lost_item, match)
+            # 2. Use helper to Create Notification (Sync)
+            # This automatically handles the commit and required fields
+            create_notification(
+                db=db,
+                user_id=current_user.user_id,
+                item_id=lost_item.item_id, # <--- Added item_id (Good practice)
+                match_id=match.match_id,
+                title="Match Found",       # <--- FIXED: Added Title
+                message=f"A match was found for your {lost_item.item_type}!",
+                notification_type="MATCH_FOUND"
+            )
+            
+            # 3. Schedule Email (Async)
+            background_tasks.add_task(
+                send_match_found_task,
+                user_email=current_user.email,
+                item_type=lost_item.item_type
+            )
 
         result.append({
             "match_id": match.match_id,
@@ -100,8 +113,6 @@ def get_ai_matches(
         })
 
     return result
-
-
 
 # Get Approved Matches (User + Staff)
 @router.get("/approved-matches", response_model=List[schemas.MatchResponse])
@@ -171,3 +182,63 @@ def get_single_match(
         "created_at": match.created_at
     }
 
+
+
+@router.post("/search-by-image")
+async def search_lost_item_by_image(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    # 1. Validate File Type
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image (JPG, PNG)")
+
+    try:
+        # 2. Read and Process Image
+        contents = await file.read()
+        try:
+            user_image = PILImage.open(io.BytesIO(contents))
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid image file")
+        
+        # 3. Generate Embedding for the uploaded image
+        # This calls the helper in ai_match.py
+        query_embedding = ai_match.encode_image(user_image)
+        
+        if query_embedding is None:
+            raise HTTPException(status_code=500, detail="AI Model failed to process image")
+
+        # 4. Fetch Candidates (Only 'FOUND' items)
+        # We fetch all FOUND items. The utility function will handle checking 
+        # if the file actually exists on disk, so we don't need complex filtering here.
+        found_items = db.query(models.Item).filter(
+            models.Item.status == 'FOUND'
+        ).all()
+        
+        if not found_items:
+            return {
+                "message": "No found items in database to compare against.", 
+                "matches": []
+            }
+
+        # 5. Run Comparison (The Robust Logic)
+        # This returns a LIST of matches (e.g., top 5)
+        matches = ai_match.find_visual_matches(query_embedding, found_items, top_k=5)
+        
+        # 6. Final Response
+        if not matches:
+            return {
+                "message": "No visual matches found.", 
+                "matches": [] 
+            }
+
+        return {
+            "message": f"Search complete. Found {len(matches)} potential matches.",
+            "matches": matches
+        }
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Visual Search Critical Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error during visual search")

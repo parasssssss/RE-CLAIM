@@ -69,8 +69,15 @@
 
         // Status Styles
         let badgeClass = "bg-gray-100 text-gray-600";
+        
         if (status === "APPROVED") badgeClass = "bg-emerald-100 text-emerald-700 border border-emerald-200";
-        if (status === "PENDING") badgeClass = "bg-yellow-100 text-yellow-700 border border-yellow-200";
+        
+        // PENDING is now White/Gray
+        if (status === "PENDING") badgeClass = "bg-white text-gray-700 border border-gray-200 shadow-sm"; 
+        
+        // RECLAIMED is now Golden
+        if (status === "RECLAIMED") badgeClass = "bg-yellow-100 text-yellow-700 border border-yellow-200"; 
+        
         if (status === "REJECTED") badgeClass = "bg-red-100 text-red-700 border border-red-200";
 
         // Image Handling with Fallback
@@ -118,12 +125,14 @@
                         </div>
                     </div>
 
-                    <div class="mt-auto pt-4 border-t border-gray-50">
-                        <button class="btn-view w-full group relative flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
-                            View Analysis
-                            <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
-                        </button>
-                    </div>
+                 <div class="px-5 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-center rounded-b-2xl">
+    <button class="btn-view group relative w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-0.5">
+        <span>View Analysis</span>
+        <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+        </svg>
+    </button>
+</div>
                 </div>
             </div>
         `;
@@ -173,29 +182,31 @@
                                 ${score}%
                             </div>
                             <div class="text-right">
-                                <p class="text-xs font-bold text-gray-400 uppercase tracking-wide">Confidence</p>
                                 <p class="text-sm font-bold text-gray-900">AI Similarity Score</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="overflow-y-auto p-8 bg-white">
+                <div class="overflow-y-auto p-8 bg-gray-50">
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 relative">
                         
-                        <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex w-10 h-10 bg-white rounded-full items-center justify-center font-bold text-gray-300 shadow-md border border-gray-100 text-xs">
-                            VS
-                        </div>
+                        <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex w-14 h-14 items-center justify-center rounded-full bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700 shadow-[0_10px_20px_-5px_rgba(202,138,4,0.5),inset_0_2px_4px_rgba(255,255,255,0.6)] border-4 border-white">
+    <span class="font-black text-black text-lg font-serif italic drop-shadow-sm pt-0.5 pr-0.5">VS</span>
+</div>
 
                         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group hover:border-green-200 transition-colors">
                             <div class="bg-green-50/50 px-4 py-3 border-b border-green-100 flex items-center gap-2">
                                 <i class="fas fa-search-location text-green-600"></i>
                                 <span class="font-bold text-green-900 text-sm uppercase tracking-wide">Found Item (Inventory)</span>
                             </div>
-                            <div class="h-64 overflow-hidden bg-gray-100 relative">
-                                <img src="${foundImg}" class="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500">
-                            </div>
+                            <div class="h-64 overflow-hidden bg-gray-50 relative flex items-center justify-center p-2">
+    <img src="${foundImg}" 
+         class="max-w-full max-h-full object-contain shadow-sm rounded-lg"
+         onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'"
+         alt="Found Item">
+</div>
                             <div class="p-5 space-y-3">
                                 <div class="grid grid-cols-2 gap-4">
                                     <div><p class="text-xs text-gray-400 font-bold uppercase">Brand</p><p class="text-sm font-medium">${match.found.brand || "--"}</p></div>
@@ -211,9 +222,12 @@
                                 <i class="fas fa-user text-gray-600"></i>
                                 <span class="font-bold text-gray-900 text-sm uppercase tracking-wide">Guest Report (Lost)</span>
                             </div>
-                            <div class="h-64 overflow-hidden bg-gray-100 relative">
-                                <img src="${lostImg}" class="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500">
-                            </div>
+                            <div class="h-64 overflow-hidden bg-gray-50 relative flex items-center justify-center p-2">
+    <img src="${lostImg}" 
+         class="max-w-full max-h-full object-contain shadow-sm rounded-lg"
+         onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'"
+         alt="Lost Item">
+</div>
                             <div class="p-5 space-y-3">
                                 <div class="grid grid-cols-2 gap-4">
                                     <div><p class="text-xs text-gray-400 font-bold uppercase">Brand</p><p class="text-sm font-medium">${match.lost.brand || "--"}</p></div>

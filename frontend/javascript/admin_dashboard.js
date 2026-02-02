@@ -92,7 +92,7 @@ function renderFeed(items) {
         <div class="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-0 opacity-0 animate-slide-up" style="animation-delay: ${index * 150}ms; animation-fill-mode: forwards;">
             <div class="w-2 h-2 mt-2 rounded-full bg-blue-500 flex-shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
             <div>
-                <p class="text-sm font-medium text-gray-800">${item.text}</p>
+                <p class="text-sm font-medium text-white">${item.text}</p>
                 <p class="text-xs text-gray-500">${item.subtext}</p>
                 <span class="text-xs text-gray-400 block mt-1">${timeStr}</span>
             </div>
@@ -152,4 +152,46 @@ function renderAdminChart(labels, dataPoints) {
             }
         }
     });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    
+    // 1. Start fetching your data (Staff, Logs, etc.)
+    initDashboardData();
+
+});
+
+async function initDashboardData() {
+    try {
+        // --- YOUR EXISTING FETCH CALLS GO HERE ---
+        // Example: await fetchAdminStats();
+        // Example: await fetchStaff();
+        
+        // Simulating a network delay so you can see the animation (Remove this setTimeout in production)
+        await new Promise(r => setTimeout(r, 1500)); 
+
+        // 2. Once data is ready, swap skeleton for real content
+        revealDashboard();
+
+    } catch (error) {
+        console.error("Error loading dashboard:", error);
+    }
+}
+
+function revealDashboard() {
+    const skeleton = document.getElementById("dashboard-skeleton");
+    const content = document.getElementById("dashboard-content");
+
+    if(!skeleton || !content) return;
+
+    // Fade out skeleton
+    skeleton.style.display = 'none';
+
+    // Show content
+    content.classList.remove("hidden");
+    
+    // Small timeout to allow the remove("hidden") to apply before changing opacity for the fade effect
+    setTimeout(() => {
+        content.classList.remove("opacity-0");
+    }, 50);
 }

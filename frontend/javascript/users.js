@@ -28,9 +28,14 @@
     // =======================
     async function fetchUsers() {
         const tableBody = document.getElementById("userTableBody");
+        const skeleton = document.getElementById("skeletonLoader"); // ✅ Select Skeleton
         const token = localStorage.getItem("token");
 
         if (!token) return window.location.href = "landing.html";
+
+        // ✅ SHOW SKELETON, HIDE TABLE BEFORE FETCH
+        if (skeleton) skeleton.classList.remove("hidden");
+        if (tableBody) tableBody.classList.add("hidden");
 
         try {
             // Using your specific endpoint
@@ -51,14 +56,18 @@
 
         } catch (err) {
             console.error("Error:", err);
-            if(tableBody) {
+            
+            // ✅ Hide skeleton on error so we can show the error message
+            if (skeleton) skeleton.classList.add("hidden");
+            if (tableBody) {
+                tableBody.classList.remove("hidden");
                 tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-red-500 bg-red-50">Error loading user data. Is the backend running?</td></tr>`;
             }
         }
     }
 
     // =======================
-    // 2. PAGINATION LOGIC (The Fix)
+    // 2. PAGINATION LOGIC
     // =======================
     function updatePaginationDisplay() {
         const totalItems = currentFilteredUsers.length;
@@ -73,7 +82,7 @@
         const endIndex = Math.min(startIndex + rowsPerPage, totalItems);
         const itemsToShow = currentFilteredUsers.slice(startIndex, endIndex);
 
-        // C. Update Footer Text (This fixes the "0 of 0" issue)
+        // C. Update Footer Text
         const startText = document.getElementById("showingStartUsers");
         const endText = document.getElementById("showingEndUsers");
         const totalText = document.getElementById("totalUsersCountDisplay");
@@ -110,9 +119,15 @@
     // =======================
     function renderUserTable(data) {
         const tableBody = document.getElementById("userTableBody");
+        const skeleton = document.getElementById("skeletonLoader");
         const emptyState = document.getElementById("emptyState");
         
         if(!tableBody) return;
+
+        // ✅ HIDE SKELETON, SHOW TABLE
+        if (skeleton) skeleton.classList.add("hidden");
+        if (tableBody) tableBody.classList.remove("hidden");
+
         tableBody.innerHTML = "";
 
         // Handle Empty State
@@ -123,7 +138,7 @@
             if(emptyState) emptyState.classList.add("hidden");
         }
 
-        data.forEach(user => {
+        data.forEach((user, index) => {
             // Initials
             const initials = user.first_name ? user.first_name.charAt(0).toUpperCase() : "?";
             
@@ -143,8 +158,12 @@
                 ? `<button onclick="toggleUserStatus(${user.user_id})" class="text-xs font-bold text-orange-600 hover:text-orange-800 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition-colors mr-2">Deactivate</button>`
                 : `<button onclick="toggleUserStatus(${user.user_id})" class="text-xs font-bold text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg transition-colors mr-2">Activate</button>`;
 
+            // ✅ Added 'row-animate' class here
+            // We also add a small inline delay based on index for the staggering effect
+            const delayStyle = `style="animation-delay: ${index * 0.05}s"`;
+
             const row = `
-            <tr class="hover:bg-gray-50 transition border-b border-gray-100 animate-entry">
+            <tr class="row-animate hover:bg-gray-50 transition border-b border-gray-100" ${delayStyle}>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                         <div class="h-10 w-10 flex-shrink-0">
@@ -196,7 +215,7 @@
             
             let matchesStatus = true;
             if (statusType === "active") matchesStatus = status === "active";
-            if (statusType === "inactive") matchesStatus = status !== "active"; // Assuming anything not active is inactive
+            if (statusType === "inactive") matchesStatus = status !== "active"; 
 
             return matchesSearch && matchesStatus;
         });

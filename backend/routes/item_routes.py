@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
 import os
 
@@ -10,7 +10,7 @@ from database import get_db
 from auth import get_current_user
 from utils.ai_match_utils import run_ai_match_for_new_item
 from utils.ai_match import generate_image_embedding,validate_image_content
-from email_utils import notify_item_recovered
+from email_utils import create_notification, send_item_recovered_task
 
 
 router = APIRouter(prefix="/items", tags=["Items"])
@@ -211,9 +211,11 @@ def update_item(
 @router.post("/claim-item/{match_id}")
 def claim_item(
     match_id: int,
+    background_tasks: BackgroundTasks, # <--- 1. Inject BackgroundTasks
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
+    # --- Fetching & Validation Logic (Kept mostly the same) ---
     match = db.query(models.Match).filter(
         models.Match.match_id == match_id
     ).first()
@@ -226,6 +228,7 @@ def claim_item(
     if not lost_item:
         raise HTTPException(status_code=404, detail="Lost item not found")
 
+    # Authorization Check
     if lost_item.user_id != current_user.user_id:
         raise HTTPException(status_code=403, detail="You are not authorized to claim this item")
 
@@ -235,7 +238,7 @@ def claim_item(
     if not found_item:
         raise HTTPException(status_code=404, detail="Found item not found")
 
-    # ✅ Update statuses
+    # --- Update Statuses ---
     match.status = "RECLAIMED"
     lost_item.status = "RECLAIMED"
     found_item.status = "RECLAIMED"
@@ -246,7 +249,26 @@ def claim_item(
     db.commit()
     db.refresh(match)
 
-    # 🔔 NOTIFY + EMAIL (THIS WAS MISSING)
-    notify_item_recovered(db, current_user, lost_item)
+    # ✅ REFACTORED NOTIFICATION LOGIC
+    
+    # 1. Create DB Record (Sync)
+    # We do this immediately so the user sees the notification in their dashboard instantly
+    create_notification(
+        db=db,
+        user_id=current_user.user_id,
+        item_id=lost_item.item_id,
+        match_id=match.match_id,
+        title="Item Recovered",
+        message=f"Success! Your {lost_item.item_type} has been successfully recovered.",
+        notification_type="ITEM_RECOVERED"
+    )
+
+    # 2. Send Email (Async Background Task)
+    # This prevents the page from loading slowly while waiting for Gmail/SMTP
+    background_tasks.add_task(
+        send_item_recovered_task,
+        user_email=current_user.email,
+        item_type=lost_item.item_type
+    )
 
     return {"message": "Item successfully claimed!"}

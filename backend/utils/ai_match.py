@@ -1,8 +1,10 @@
 from sentence_transformers import SentenceTransformer, util
-from PIL import Image
+from PIL import Image 
 import os
 from typing import List, Tuple
 from models import Item
+from PIL import Image as PILImage
+import torch
 
 # 1. Load Models (Force CPU)
 print("Loading AI Models... (This may take a moment on startup)")
@@ -167,3 +169,100 @@ def match_items(lost_items: List[Item], found_items: List[Item]):
                 })
 
     return matches
+
+# ==========================================
+# 4. VISUAL SEARCH FUNCTIONALITY
+def encode_image(image_obj):
+    """
+    Takes a raw PIL Image object and returns its vector embedding.
+    """
+    try:
+        # Returns a Tensor
+        return clip_model.encode(image_obj, convert_to_tensor=True)
+    except Exception as e:
+        print(f"Error encoding image: {e}")
+        return None
+
+def find_visual_matches(query_embedding, candidates: List, top_k=5):
+    """
+    Compares the query_embedding against a list of Found Item objects.
+    Returns a LIST of matches (dictionaries), not just one.
+    """
+    
+    # 1. Prepare Candidates
+    valid_candidates = []
+    candidate_embeddings = []
+
+    for item in candidates:
+        emb = None
+        
+        # A. Try to use saved embedding from DB (Fastest)
+        if hasattr(item, 'image_embedding') and item.image_embedding is not None:
+            # Handle format: List vs Tensor
+            if isinstance(item.image_embedding, list):
+                emb = torch.tensor(item.image_embedding)
+            else:
+                emb = item.image_embedding
+
+        # B. Fallback: Generate from local file (Slower, but necessary if DB is empty)
+        # We use getattr to be safe if your model uses 'image_url' or 'image_path'
+        path = getattr(item, 'image_path', None) or getattr(item, 'image_url', None)
+
+        if emb is None and path and os.path.exists(path):
+            try:
+                img = Image.open(path)
+                # Ensure we use the global clip_model here
+                emb = clip_model.encode(img, convert_to_tensor=True)
+            except Exception as e:
+                print(f"Skipping corrupt image {path}: {e}")
+                continue
+        
+        # If we successfully got an embedding, add to the valid list
+        if emb is not None:
+            valid_candidates.append(item)
+            candidate_embeddings.append(emb)
+
+    # VALIDATION: If no candidates have valid images/embeddings, return empty list
+    if not valid_candidates:
+        return []
+
+    # 2. Stack embeddings into a Matrix
+    try:
+        candidate_matrix = torch.stack(candidate_embeddings)
+    except:
+        candidate_matrix = torch.tensor(candidate_embeddings)
+
+    # 3. Calculate Similarity (Vector Math)
+    # This compares Query vs ALL Candidates at once
+    scores = util.cos_sim(query_embedding, candidate_matrix)[0]
+
+    # 4. Format Results
+    scored_results = []
+    for idx, score_tensor in enumerate(scores):
+        score_val = score_tensor.item() # Convert tensor to float
+        
+        # Validation: Only return matches with decent similarity
+        if score_val > 0.60:  # 60% threshold
+            item = valid_candidates[idx]
+            
+            # Handle location naming (found_location vs lost_location)
+            location_val = getattr(item, 'lost_location', None) or getattr(item, 'lost_location', "Unknown")
+            image_val = getattr(item, 'image_path', None) or getattr(item, 'image_url', "")
+
+            scored_results.append({
+                "item_id": item.item_id,
+                "name": item.item_type,
+                "description": item.description,
+                # Frontend needs the path/url to display the image
+                "image_url": image_val, 
+                "match_confidence": f"{int(score_val * 100)}%",
+                "raw_score": score_val,
+                "location": location_val
+            })
+
+    # 5. Sort & Return List
+    # Sort descending by score (Best match first)
+    scored_results.sort(key=lambda x: x['raw_score'], reverse=True)
+    
+    # Return the top K matches (e.g., top 5)
+    return scored_results[:top_k]

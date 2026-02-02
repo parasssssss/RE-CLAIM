@@ -196,72 +196,107 @@ function renderPagination() {
         `;
     }
 
-    // ===================== COMPARISON CARD =====================
-    function renderComparisonCard(match) {
-        const score = Math.round(match.similarity_score * 100);
-        let bannerColor = "bg-green-50 border-green-200 text-green-800";
-        let bannerTitle = "Match Approved";
-        let bannerDesc = "This item has been verified. You can claim it below.";
+    // ===================== COMPARISON CARD (ORIGINAL WHITE THEME + FIXED IMAGES) =====================
+function renderComparisonCard(match) {
+    const score = Math.round(match.similarity_score * 100);
+    
+    // Original Banner Logic
+    let bannerColor = "bg-green-50 border-green-200 text-green-800";
+    let bannerTitle = "Match Approved";
+    let bannerDesc = "This item has been verified. You can claim it below.";
 
-        if(match.status === 'RECLAIMED') {
-            bannerColor = "bg-yellow-50 border-yellow-200 text-yellow-800";
-            bannerTitle = "Item Claimed";
-            bannerDesc = "You have successfully claimed this item.";
-        }
+    if(match.status === 'RECLAIMED') {
+        bannerColor = "bg-yellow-50 border-yellow-200 text-yellow-800";
+        bannerTitle = "Item Claimed";
+        bannerDesc = "You have successfully claimed this item.";
+    }
 
-        const foundImg = match.found.image_path ? `http://127.0.0.1:8000/${match.found.image_path}` : 'https://via.placeholder.com/300';
-        const lostImg = match.lost.image_path ? `http://127.0.0.1:8000/${match.lost.image_path}` : 'https://via.placeholder.com/300';
+    const foundImg = match.found.image_path ? `http://127.0.0.1:8000/${match.found.image_path}` : 'https://via.placeholder.com/300';
+    const lostImg = match.lost.image_path ? `http://127.0.0.1:8000/${match.lost.image_path}` : 'https://via.placeholder.com/300';
 
-        return `
-            <div class="flex flex-col h-full max-h-[90vh]">
-                <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                    <div>
-                        <h2 class="text-2xl font-serif font-bold text-gray-900">Approved Match</h2>
-                        <p class="text-sm text-gray-500 mt-1">Ref ID: #${match.match_id}</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                         <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold text-sm">${score}%</div>
-                    </div>
+    return `
+        <div class="flex flex-col h-full max-h-[90vh] bg-white rounded-lg shadow-xl overflow-hidden">
+            
+            <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <div>
+                    <h2 class="text-2xl font-serif font-bold text-gray-900">Approved Match</h2>
+                    <p class="text-sm text-gray-500 mt-1">Ref ID: #${match.match_id}</p>
                 </div>
-                <div class="overflow-y-auto p-8 bg-white">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 relative">
-                        <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex w-10 h-10 bg-white rounded-full items-center justify-center font-bold text-gray-300 shadow-md border border-gray-100 text-xs">VS</div>
-                        
-                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group hover:border-green-200">
-                            <div class="bg-green-50/50 px-4 py-2 border-b border-green-100 text-green-900 font-bold text-xs uppercase tracking-wide">Found Item</div>
-                            <img src="${foundImg}" class="w-full h-56 object-contain p-4 bg-gray-50" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'">
-                            <div class="p-4 grid grid-cols-2 gap-2 text-sm">
-                                <div><span class="text-gray-400 text-xs font-bold uppercase">Brand</span><br>${match.found.brand || "--"}</div>
-                                <div><span class="text-gray-400 text-xs font-bold uppercase">Color</span><br>${match.found.color || "--"}</div>
-                            </div>
-                        </div>
-
-                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group hover:border-gray-300">
-                            <div class="bg-gray-50 px-4 py-2 border-b border-gray-100 text-gray-900 font-bold text-xs uppercase tracking-wide">Your Report</div>
-                            <img src="${lostImg}" class="w-full h-56 object-contain p-4 bg-gray-50" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'">
-                            <div class="p-4 grid grid-cols-2 gap-2 text-sm">
-                                <div><span class="text-gray-400 text-xs font-bold uppercase">Brand</span><br>${match.lost.brand || "--"}</div>
-                                <div><span class="text-gray-400 text-xs font-bold uppercase">Color</span><br>${match.lost.color || "--"}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="${bannerColor} border rounded-xl p-4 flex gap-3 shadow-sm">
-                        <i class="fas fa-info-circle mt-1 text-lg"></i>
-                        <div><h4 class="font-bold text-sm uppercase">${bannerTitle}</h4><p class="text-sm opacity-90">${bannerDesc}</p></div>
-                    </div>
-                </div>
-                <div class="bg-gray-50 px-8 py-5 border-t border-gray-100 flex flex-row-reverse gap-3">
-                    <button onclick="closeMatch()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition">Close</button>
-                    ${(currentUser?.role_id === 4 && match.status !== "RECLAIMED") ? `
-                        <button onclick="claimItem(${match.match_id})" class="px-5 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition shadow-lg flex items-center gap-2">
-                            <i class="fas fa-box-open"></i> Claim Item
-                        </button>
-                    ` : ""}
+                <div class="flex items-center gap-2">
+                     <div class="w-12 h-12 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-sm border-2 border-green-200">
+                        ${score}%
+                     </div>
                 </div>
             </div>
-        `;
-    }
+
+            <div class="overflow-y-auto p-8 bg-white">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 relative">
+                    
+                    <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex w-12 h-12 items-center justify-center rounded-full bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-600 shadow-md border-4 border-white">
+                        <span class="font-black text-white text-xs font-serif italic pr-0.5">VS</span>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden group hover:border-green-300 transition-colors">
+                        <div class="bg-green-50/50 px-4 py-3 border-b border-green-100 text-green-900 font-bold text-xs uppercase tracking-wide flex justify-between">
+                            <span>Found Item</span>
+                            <i class="fas fa-box-open opacity-50"></i>
+                        </div>
+                        
+                        <div class="w-full h-64 bg-gray-100 flex items-center justify-center overflow-hidden relative">
+                            <img src="${foundImg}" 
+                                 class="w-full h-full object-contain" 
+                                 onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'">
+                        </div>
+
+                        <div class="p-4 grid grid-cols-2 gap-2 text-sm bg-white">
+                            <div><span class="text-gray-400 text-xs font-bold uppercase">Brand</span><br><span class="text-gray-800 font-medium">${match.found.brand || "--"}</span></div>
+                            <div><span class="text-gray-400 text-xs font-bold uppercase">Color</span><br><span class="text-gray-800 font-medium">${match.found.color || "--"}</span></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden group hover:border-blue-300 transition-colors">
+                        <div class="bg-blue-50/50 px-4 py-3 border-b border-blue-100 text-blue-900 font-bold text-xs uppercase tracking-wide flex justify-between">
+                            <span>Your Report</span>
+                            <i class="fas fa-file-alt opacity-50"></i>
+                        </div>
+                        
+                        <div class="w-full h-64 bg-gray-100 flex items-center justify-center overflow-hidden relative">
+                             <img src="${lostImg}" 
+                                  class="w-full h-full object-contain" 
+                                  onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'">
+                        </div>
+
+                        <div class="p-4 grid grid-cols-2 gap-2 text-sm bg-white">
+                            <div><span class="text-gray-400 text-xs font-bold uppercase">Brand</span><br><span class="text-gray-800 font-medium">${match.lost.brand || "--"}</span></div>
+                            <div><span class="text-gray-400 text-xs font-bold uppercase">Color</span><br><span class="text-gray-800 font-medium">${match.lost.color || "--"}</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="${bannerColor} border rounded-xl p-4 flex gap-3 shadow-sm items-start">
+                    <i class="fas fa-info-circle mt-1 text-lg"></i>
+                    <div>
+                        <h4 class="font-bold text-sm uppercase">${bannerTitle}</h4>
+                        <p class="text-sm opacity-90">${bannerDesc}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 px-8 py-5 border-t border-gray-200 flex flex-row-reverse gap-3">
+                <button onclick="closeMatch()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition shadow-sm">
+                    Close
+                </button>
+                
+                ${(currentUser?.role_id === 4 && match.status !== "RECLAIMED") ? `
+                    <button onclick="claimItem(${match.match_id})" class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 text-slate-900 font-bold rounded-lg hover:from-yellow-400 hover:to-yellow-500 transition shadow-[0_0_15px_rgba(234,179,8,0.3)] flex items-center gap-2 text-sm transform active:scale-95">
+                        <i class="fas fa-signature"></i> Claim Ownership
+                    </button>
+                ` : ""}
+            </div>
+        </div>
+    `;
+}
 
     // ===================== GLOBAL ACTIONS =====================
     window.openMatch = function(match) {
