@@ -10,7 +10,7 @@ from database import get_db
 from auth import get_current_user
 from utils.ai_match_utils import run_ai_match_for_new_item
 from utils.ai_match import generate_image_embedding,validate_image_content
-from email_utils import create_notification, send_item_recovered_task
+from email_utils import create_notification, send_item_recovered_task, send_match_found_task
 
 
 router = APIRouter(prefix="/items", tags=["Items"])
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/items", tags=["Items"])
 
 @router.post("/report-item")
 def report_item(
+    background_tasks: BackgroundTasks, # <--- 1. Inject BackgroundTasks here
     item_type: str = Form(...),
     brand: str = Form(...),
     color: str = Form(...),
@@ -40,7 +41,6 @@ def report_item(
 
     if image:
         # --- A. Save Image Temporarily ---
-        # We must save it to disk first so the AI can read it
         os.makedirs("uploads/items", exist_ok=True)
         image_path = f"uploads/items/{image.filename}"
         image_mime = image.content_type
@@ -49,23 +49,18 @@ def report_item(
             f.write(image.file.read())
 
         # --- B. 🛑 STRICT AI CHECK ---
-        # We check BEFORE creating the item in the DB
         is_valid, ai_msg = validate_image_content(image_path, item_type)
         
         if not is_valid:
-            # ❌ MATCH FAILED! 
-            # 1. Delete the bad image so it doesn't clutter your server
             if os.path.exists(image_path):
                 os.remove(image_path)
-            
-            # 2. Stop everything and return an error
             print(f"🚫 BLOCKING REPORT: {ai_msg}")
             raise HTTPException(status_code=400, detail=ai_msg)
 
-        # --- C. If we survived the check, generate embedding ---
+        # --- C. Generate embedding ---
         image_embedding = generate_image_embedding(image_path)
 
-    # 2. Create Item in DB (Only happens if AI said "Yes")
+    # 2. Create Item in DB
     item = crud.create_item(
         db=db,
         user_id=current_user.user_id,
@@ -83,6 +78,42 @@ def report_item(
 
     # 3. Run Matching
     matches = run_ai_match_for_new_item(item, db)
+
+    # =========================================================
+    # 4. ✅ NEW: INSTANT NOTIFICATION LOGIC
+    # =========================================================
+    if matches:
+        print(f"✨ Instant Match Found for item {item.item_id}. Triggering notifications...")
+        
+        # We notify the user who just reported the item (if they lost it)
+        # OR we notify the owner of the lost item (if staff just found it)
+        
+        # Simple implementation: Notify current user if they just reported a LOST item that matched
+        if item.status == "LOST":
+            # 1. Create Dashboard Notification
+            # Note: We associate it with the first match for simplicity, 
+            # or you could loop if multiple matches exist.
+            best_match = matches[0] # Assuming matches is a list of objects or dicts
+            
+            # Helper to safely get match_id depending on return type of run_ai_match...
+            match_id = getattr(best_match, 'match_id', None) or best_match.get('match_id')
+
+            create_notification(
+                db=db,
+                user_id=current_user.user_id,
+                item_id=item.item_id,
+                match_id=match_id,
+                title="Instant Match Found",
+                message=f"Good news! We found a potential match for your {item.item_type} immediately.",
+                notification_type="MATCH_FOUND"
+            )
+
+            # 2. Send Email in Background
+            background_tasks.add_task(
+                send_match_found_task,
+                user_email=current_user.email,
+                item_type=item.item_type
+            )
 
     return {
         "message": "Item reported successfully",

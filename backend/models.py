@@ -19,6 +19,8 @@ class Business(Base):
     business_name = Column(String, nullable=False)
     address = Column(String)
     contact_email = Column(String)
+    # ✅ ADD THIS: Allows Super Admin to ban a business manually
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     items = relationship("Item", back_populates="business")
