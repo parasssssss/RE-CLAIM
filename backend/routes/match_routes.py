@@ -46,27 +46,48 @@ def get_ai_matches(
     db: Session = Depends(get_db)
 ):
     # 1. Start the query by joining Match -> Found Item
+    # This allows us to filter matches based on the Found Item's properties (business_id, user_id)
     matches_query = db.query(models.Match).join(
         models.Item, models.Match.found_item_id == models.Item.item_id
     )
 
-    # CASE A: Business Admin (Role 2) or Staff (Role 3)
+    # ---------------------------------------------------------
+    # CASE A: Business Staff (Role 3) & Admins (Role 2)
+    # ---------------------------------------------------------
     if current_user.role_id in [2, 3]: 
         if not current_user.business_id:
             return []
+        
+        # 1. Base Filter: Must match the user's Business ID
         matches_query = matches_query.filter(
             models.Item.business_id == current_user.business_id
         )
 
-    # CASE B: Normal User (Role 4)
+        # 👇 2. EXTRA FILTER FOR STAFF (Role 3) 👇
+        # If user is Staff, only show matches for Found Items THEY reported.
+        # (Admins/Role 2 skip this and see all matches for the business)
+        if current_user.role_id == 3:
+            matches_query = matches_query.filter(
+                models.Item.user_id == current_user.user_id
+            )
+
+    # ---------------------------------------------------------
+    # CASE B: Normal User (Role 4) - Looking for their LOST items
+    # ---------------------------------------------------------
     elif current_user.role_id == 4:
+        # Find all Item IDs that this user lost
         user_lost_items = db.query(models.Item.item_id).filter(
             models.Item.user_id == current_user.user_id
         ).subquery()
+        
+        # Show matches where the 'lost_item_id' belongs to this user
         matches_query = matches_query.filter(
             models.Match.lost_item_id.in_(user_lost_items)
         )
 
+    # ---------------------------------------------------------
+    # EXECUTE & PROCESS
+    # ---------------------------------------------------------
     matches = matches_query.all()
     result = []
 
@@ -74,9 +95,13 @@ def get_ai_matches(
         lost_item = db.query(models.Item).filter(models.Item.item_id == match.lost_item_id).first()
         found_item = db.query(models.Item).filter(models.Item.item_id == match.found_item_id).first()
 
-        # ✅ FIXED NOTIFICATION LOGIC
+        # Safety check: Ensure both items still exist
+        if not lost_item or not found_item:
+            continue
+
+        # --- NOTIFICATION LOGIC ---
         
-        # 1. Check for duplicates
+        # 1. Check for duplicates (prevent spamming the same match)
         existing_notif = db.query(models.Notification).filter_by(
             user_id=current_user.user_id,
             match_id=match.match_id,
@@ -84,25 +109,28 @@ def get_ai_matches(
         ).first()
 
         if not existing_notif:
-            # 2. Use helper to Create Notification (Sync)
-            # This automatically handles the commit and required fields
+            # 2. Create In-App Notification
             create_notification(
                 db=db,
                 user_id=current_user.user_id,
-                item_id=lost_item.item_id, # <--- Added item_id (Good practice)
+                item_id=lost_item.item_id,
                 match_id=match.match_id,
-                title="Match Found",       # <--- FIXED: Added Title
+                title="Match Found",
                 message=f"A match was found for your {lost_item.item_type}!",
                 notification_type="MATCH_FOUND"
             )
             
             # 3. Schedule Email (Async)
-            background_tasks.add_task(
-                send_match_found_task,
-                user_email=current_user.email,
-                item_type=lost_item.item_type
-            )
+            # Only send email if current user is the one who lost the item (usually Role 4)
+            # Or if you want staff to be notified too, keep this line.
+            if current_user.email:
+                background_tasks.add_task(
+                    send_match_found_task,
+                    user_email=current_user.email,
+                    item_type=lost_item.item_type
+                )
 
+        # --- RESPONSE FORMATTING ---
         result.append({
             "match_id": match.match_id,
             "similarity_score": match.similarity_score,

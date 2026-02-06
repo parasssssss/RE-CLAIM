@@ -25,6 +25,7 @@ class UserOut(BaseModel):
     profile_image: Optional[str] = None
     profile_image_mime: Optional[str] = None
     role_id: Optional[int]
+    
 
 
 class ProfileBase(BaseModel):

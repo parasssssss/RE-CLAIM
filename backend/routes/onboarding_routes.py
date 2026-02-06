@@ -50,43 +50,48 @@ def start_onboarding(payload: dict, db: Session = Depends(get_db)):
 
 # ... (Keep your existing start_onboarding and get_plans endpoints) ...
 
-# ✅ UPDATED: Complete Onboarding (Now saves Payment History too)
+# onboarding_routes.py
+
 @router.post("/onboarding/complete")
-def complete_onboarding(token: str, payment_id: str = None, db: Session = Depends(get_db)):
-    # 1. Fetch Temp Registration
-    reg = db.query(models.BusinessRegistration).filter_by(registration_token=token).first()
-
-    if not reg:
-        raise HTTPException(status_code=400, detail="Invalid registration")
+def complete_onboarding(payload: dict, db: Session = Depends(get_db)):
+    token = payload.get("token")
+    payment_id = payload.get("payment_id") # Razorpay ID
     
-    if reg.status == "COMPLETED":
-        raise HTTPException(status_code=400, detail="Already completed")
+    # 1. Validate Registration
+    reg = db.query(models.BusinessRegistration).filter(
+        models.BusinessRegistration.registration_token == token
+    ).first()
+    
+    if not reg or reg.status == "COMPLETED":
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
 
-    # 2. Create Business
+    # 2. Create the Business
     business = models.Business(
+        business_code=reg.business_code,
         business_name=reg.business_name,
         address=reg.address,
         contact_email=reg.contact_email,
-        business_code=reg.business_code
+        is_active=True
     )
     db.add(business)
-    db.flush() # ⚠️ Essential: This generates the new business_id (e.g., 1)
+    db.flush() # Flush to get business.business_id immediately
 
-    # 3. Create Admin User
+    # 3. Create the Admin User
     admin = models.User(
         first_name=reg.admin_name,
         email=reg.admin_email,
         password_hash=reg.admin_password_hash,
         business_id=business.business_id,
-        role_id=2 # Admin
+        role_id=2, # Admin Role
+        is_active=True
     )
     db.add(admin)
 
-    # 4. Create Subscription & Payment Record
-    plan = db.query(models.SubscriptionPlan).filter_by(plan_id=reg.selected_plan_id).first()
+    # 4. Handle Subscription & Payment History
+    plan = db.query(models.SubscriptionPlan).filter(models.SubscriptionPlan.plan_id == reg.selected_plan_id).first()
     
     if plan:
-        # A. Create Active Subscription
+        # A. TABLE 1: Set Current Active Subscription (Status)
         new_sub = models.BusinessSubscription(
             business_id=business.business_id,
             plan_id=plan.plan_id,
@@ -97,25 +102,24 @@ def complete_onboarding(token: str, payment_id: str = None, db: Session = Depend
         )
         db.add(new_sub)
 
-        # B. ✅ CREATE PAYMENT HISTORY RECORD (Fixes missing history)
+        # ==========================================================
+        # B. TABLE 2: Create Payment History Log (THE MISSING LINK)
+        # ==========================================================
         if payment_id:
-            initial_payment = models.Payment(
-                registration_token=token,       # Keep token for reference if needed
-                business_id=business.business_id, # <--- NEW: Proper Link
+            history_log = models.Payment(
+                registration_token=token,       
+                business_id=business.business_id, # Link to the new business
                 razorpay_payment_id=payment_id,
                 razorpay_order_id="ONBOARDING",
                 amount=plan.price,
-                status="PAID"
+                status="PAID",
+                created_at=datetime.datetime.utcnow()
             )
-            db.add(initial_payment)
+            db.add(history_log)
+        # ==========================================================
 
     # 5. Finalize
     reg.status = "COMPLETED"
     db.commit()
 
-    return {
-        "message": "Onboarding Successful", 
-        "business_code": business.business_code,
-        "subscription": plan.name if plan else "Unknown",
-        "business_id": business.business_id
-    }
+    return {"message": "Onboarding Complete", "business_id": business.business_id}

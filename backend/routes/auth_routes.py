@@ -30,7 +30,6 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
     return crud.create_user(db, user, business.business_id)
 
-
 @router.post("/login")
 def login_user(user: schemas.UserLogin, db: Session = Depends(get_db)):
     # 1. Find User
@@ -42,19 +41,35 @@ def login_user(user: schemas.UserLogin, db: Session = Depends(get_db)):
     if not db_user or not crud.verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # 3. 🛑 CHECK SUSPENSION (New Logic)
-    # Ensure your User model has 'is_active'. If not, see the note below.
+    # 3. 🛑 CHECK USER SUSPENSION
     if not db_user.is_active: 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account suspended. Please contact your administrator."
+            detail="Your account has been suspended."
         )
 
-    # 4. ✅ Update Last Login
+    # =========================================================
+    # 4. 🏢 CHECK BUSINESS SUSPENSION (NEW LOGIC)
+    # =========================================================
+    # Only check if the user is actually linked to a business
+    if db_user.business_id is not None:
+        business = db.query(models.Business).filter(
+            models.Business.business_id == db_user.business_id
+        ).first()
+
+        # If business exists and is marked as inactive
+        if business and not business.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your organization's access has been suspended. Please contact support."
+            )
+    # =========================================================
+
+    # 5. ✅ Update Last Login
     db_user.last_login = datetime.utcnow()
     db.commit()
 
-    # 5. Generate Token
+    # 6. Generate Token
     token = create_access_token({
         "sub": str(db_user.user_id),
         "business_id": db_user.business_id,
@@ -68,7 +83,6 @@ def login_user(user: schemas.UserLogin, db: Session = Depends(get_db)):
         "role_id": db_user.role_id,
         "business_id": db_user.business_id
     }
-
 
 @router.post("/forgot-password")
 def forgot_password(data: dict, db: Session = Depends(get_db)):
