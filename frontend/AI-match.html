@@ -184,6 +184,26 @@ html, body {
     margin: 0;
     padding: 0;
 }
+/* --- RESPONSIVE LAYOUT FIXES --- */
+
+/* On Desktop (Large Screens): */
+@media (min-width: 1024px) {
+    /* 1. Force Sidebar to be visible */
+    .sidebar-container {
+        transform: translateX(0) !important;
+        box-shadow: 4px 0 12px -2px rgba(0, 0, 0, 0.05); /* Softer shadow for persistent nav */
+    }
+
+    /* 2. Hide the dark overlay (we don't need it on desktop) */
+    .sidebar-overlay {
+        display: none !important;
+    }
+
+    /* 3. Hide the mobile toggle buttons on desktop */
+    #toggleSidebar, #closeSidebar {
+        display: none !important;
+    }
+}
     </style>
 </head>
 
@@ -193,7 +213,7 @@ html, body {
   
   <!-- Fixed Sidebar -->
   <div class="sidebar-container" id="sidebar">
-    <div class="p-6 border-b border-gray-200">
+    <div class="px-6 pt-5 pb-3 border-b border-gray-200">
       <div class="flex items-center space-x-3">
         <img src="images/logo.png" alt="ReClaim Logo" class="w-8 h-8 object-contain">
         
@@ -287,21 +307,23 @@ html, body {
   </div>
 
   <!-- Main Layout -->
-  <div class="min-h-full">
+  <div class="min-h-full lg:ml-80 transition-all duration-300">
     <!-- Header -->
     <header class="bg-gradient-to-r from-white via-blue-50/40 to-white shadow-md border-b border-blue-100/50">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 justify-between items-center">
           <!-- Left side: Menu button and Logo -->
           <div class="flex items-center space-x-3">
-            <button class="mobile-menu-btn p-2 rounded-md text-gray-400 hover:text-gray-900 hover:bg-gray-100" id="toggleSidebar">
+            <button class="mobile-menu-btn p-2 rounded-md text-gray-400 hover:text-gray-900 hover:bg-gray-100 lg:hidden" id="toggleSidebar">
               <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
             
             <div class="flex items-center space-x-2">
+              <!----
               <img src="images/logo.png" alt="ReClaim Logo" class="w-8 h-8 object-contain">
+            -->
             </div>
           </div>
 

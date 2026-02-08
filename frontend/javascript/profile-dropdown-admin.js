@@ -67,30 +67,7 @@ export class ProfileDropdown {
                             <i class="fas fa-arrow-right text-xs opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-slate-300"></i>
                         </a>
                         
-                        <a href="notifications.html" class="menu-item group" style="--delay: 2;">
-                            <div class="icon-box group-hover:bg-slate-900 group-hover:text-yellow-400">
-                                <i class="fas fa-bell"></i>
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex justify-between items-center">
-                                    <span class="block font-bold text-slate-800 text-sm group-hover:translate-x-1 transition-transform">Notifications</span>
-                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                                </div>
-                                <span class="text-[10px] text-slate-400">View recent alerts</span>
-                            </div>
-                        </a>
-
-                        <div class="h-px bg-slate-100 my-2 mx-3"></div>
-                        <div class="menu-label">System</div>
                         
-                        <a href="support.html" class="menu-item group" style="--delay: 3;">
-                            <div class="icon-box group-hover:bg-slate-900 group-hover:text-yellow-400">
-                                <i class="fas fa-headset"></i>
-                            </div>
-                            <span class="font-bold text-slate-700 text-sm group-hover:translate-x-1 transition-transform">Help Center</span>
-                        </a>
-
-                        <div class="h-px bg-slate-100 my-2 mx-3"></div>
                         
                         <button id="logoutButton" class="menu-item group logout-item" style="--delay: 4;">
                             <div class="icon-box bg-red-50 text-red-500 group-hover:bg-red-500 group-hover:text-white">

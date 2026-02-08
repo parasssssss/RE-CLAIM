@@ -15,6 +15,9 @@ const rowsPerPage = 5;          // Items per page (Change this to 10 if you pref
 async function fetchItems() {
     const tableBody = document.getElementById("itemsTableBody");
     const token = localStorage.getItem("token");
+    if (token) {
+        loadBusinessCode(token);
+    }
 
     if (!token) {
         window.location.href = "landing.html";
@@ -240,3 +243,33 @@ window.closeItemModal = function() {
         modal.classList.add('hidden');
     }, 300);
 }
+
+// ===================== FETCH BUSINESS CODE =====================
+    async function loadBusinessCode(token) {
+        try {
+            const res = await fetch("http://127.0.0.1:8000/users/me/business-code", {
+                headers: { 
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                const codeEl = document.getElementById("header-business-code");
+                const containerEl = document.getElementById("business-info-display");
+
+                if (data.business_code) {
+                    if(codeEl) codeEl.textContent = data.business_code;
+                    // Show the container if it was hidden
+                    if(containerEl) containerEl.classList.remove("hidden");
+                    // Ensure the flex layout works if previously hidden
+                    if(containerEl) containerEl.classList.add("flex"); 
+                }
+            } else {
+                console.warn(`Business Code API returned ${res.status}`);
+            }
+        } catch (err) {
+            console.error("❌ Network error loading Business Code:", err);
+        }
+    }

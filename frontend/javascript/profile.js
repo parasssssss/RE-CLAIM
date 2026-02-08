@@ -1,308 +1,350 @@
-// profile.js
-const token = localStorage.getItem("token");
-
-// Elements
-const firstNameInput = document.getElementById("firstName");
-const lastNameInput = document.getElementById("lastName");
-const emailInput = document.getElementById("email");
-const phoneInput = document.getElementById("phone");
-const profileName = document.getElementById("profile-name");
-const profileEmail = document.getElementById("profile-email");
-
-const profilePicSpan = document.getElementById("profile-pic");
-const profileImgTag = document.getElementById("profile-img-tag");
-const uploadBtn = document.getElementById("upload-btn");
-const cameraBtn = document.getElementById("camera-btn");
-const saveBtn = document.getElementById("savebtn");
-const photoInput = document.getElementById("photo-input");
-
-// Dashboard elements (for updating header)
-const dashboardProfileImg = document.getElementById("dashboard-profile-img");
-const userInitial = document.getElementById("user-initial");
-const usernameSpan = document.getElementById("username");
-
-let selectedFile = null;
-
-// ------------------------
-// Fetch current user info
-// ------------------------
-async function fetchProfile() {
-    try {
-        const res = await fetch("http://127.0.0.1:8000/users/me", {
-            headers: {
-                "Authorization": `Bearer ${token}`
+/* ================= 1. STYLE & ANIMATION INJECTOR ================= */
+const addGlobalStyles = () => {
+    if (!document.getElementById('profile-dynamic-styles')) {
+        const style = document.createElement('style');
+        style.id = 'profile-dynamic-styles';
+        style.textContent = `
+            /* Toast Animations */
+            @keyframes slideInToast {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
             }
-        });
-
-        if (!res.ok) {
-            if (res.status === 401) {
-                window.location.href = "login.html";
+            @keyframes fadeOutToast {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(10px); opacity: 0; }
             }
-            return;
-        }
+            .toast-enter { animation: slideInToast 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+            .toast-exit { animation: fadeOutToast 0.4s ease-in forwards; }
 
-        const data = await res.json();
-
-        // Fill inputs
-        firstNameInput.value = data.first_name || "";
-        lastNameInput.value = data.last_name || "";
-        emailInput.value = data.email || "";
-        phoneInput.value = data.phone || "";
-        
-        // Update profile header
-        profileName.textContent = `${data.first_name || ""} ${data.last_name || ""}`.trim() || "User";
-        profileEmail.textContent = data.email || "Loading...";
-        
-        // Update dashboard header
-        if (usernameSpan) {
-            usernameSpan.textContent = `${data.first_name || ""} ${data.last_name || ""}`.trim() || "User Account";
-        }
-
-        // Handle profile image
-        updateProfileImage(data);
-        
-        // Update dashboard image
-        updateDashboardImage(data);
-        
-        // Fetch stats
-        fetchUserStats();
-        
-    } catch (error) {
-        console.error("Error fetching profile:", error);
-    }
-}
-
-// Update profile image display
-function updateProfileImage(data) {
-    if (data.profile_image && data.profile_image_mime) {
-        profileImgTag.src = `data:${data.profile_image_mime};base64,${data.profile_image}`;
-        profileImgTag.classList.remove("hidden");
-        profilePicSpan.classList.add("hidden");
-        
-        // Set initials if no image
-        const initials = (data.first_name?.[0] || "") + (data.last_name?.[0] || "");
-        profilePicSpan.textContent = initials.toUpperCase() || "JD";
-    } else {
-        const initials = (data.first_name?.[0] || "") + (data.last_name?.[0] || "");
-        profilePicSpan.textContent = initials.toUpperCase() || "JD";
-        profileImgTag.classList.add("hidden");
-        profilePicSpan.classList.remove("hidden");
-    }
-}
-
-// Update dashboard image in header
-function updateDashboardImage(data) {
-    if (!dashboardProfileImg || !userInitial) return;
-    
-    if (data.profile_image && data.profile_image_mime) {
-        dashboardProfileImg.src = `data:${data.profile_image_mime};base64,${data.profile_image}`;
-        dashboardProfileImg.classList.remove("hidden");
-        userInitial.classList.add("hidden");
-    } else {
-        const initials = (data.first_name?.[0] || "") + (data.last_name?.[0] || "");
-        userInitial.textContent = initials.toUpperCase() || "U";
-        dashboardProfileImg.classList.add("hidden");
-        userInitial.classList.remove("hidden");
-    }
-}
-
-// Fetch user stats
-async function fetchUserStats() {
-    try {
-        const res = await fetch("http://127.0.0.1:8000/user/stats", {
-            headers: {
-                "Authorization": `Bearer ${token}`
-            }
-        });
-        
-        if (res.ok) {
-            const stats = await res.json();
-            document.getElementById("reports-count").textContent = stats.active_reports || 0;
-            document.getElementById("matches-count").textContent = stats.successful_matches || 0;
+            /* Loading Spinner */
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            .animate-spin { animation: spin 1s linear infinite; }
             
-            // Update member since date
-            if (stats.joined_date) {
-                const date = new Date(stats.joined_date);
-                const year = date.getFullYear();
-                document.getElementById("member-since").textContent = `Since ${year}`;
-            }
-        }
-    } catch (error) {
-        console.error("Error fetching stats:", error);
+            /* Entry Animation */
+            @keyframes entry { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+            .animate-entry { animation: entry 0.4s ease-out forwards; }
+        `;
+        document.head.appendChild(style);
     }
-}
+};
 
-// ------------------------
-// File upload handling
-// ------------------------
-function triggerFileInput() {
-    photoInput.click();
-}
+addGlobalStyles();
 
-// Connect both buttons to file input
-if (cameraBtn) {
-    cameraBtn.addEventListener("click", triggerFileInput);
-}
+/* ================= 2. TOAST NOTIFICATION SYSTEM ================= */
+const ToastManager = {
+    container: null,
+    init() {
+        if (!document.getElementById('toast-container')) {
+            this.container = document.createElement('div');
+            this.container.id = 'toast-container';
+            this.container.className = 'fixed top-5 right-5 z-[9999] flex flex-col gap-3 pointer-events-none';
+            document.body.appendChild(this.container);
+        } else {
+            this.container = document.getElementById('toast-container');
+        }
+    },
+    show(message, type = 'success') {
+        this.init();
+        const toast = document.createElement('div');
+        const isError = type === 'error';
+        const borderClass = isError ? 'border-red-500' : 'border-green-500';
+        const iconColor = isError ? 'text-red-600 bg-red-100' : 'text-green-600 bg-green-100';
+        const title = isError ? 'Action Failed' : 'Success';
+        
+        const iconSvg = isError 
+            ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>'
+            : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
 
-if (uploadBtn) {
-    uploadBtn.addEventListener("click", triggerFileInput);
-}
+        toast.className = `pointer-events-auto toast-enter flex items-start gap-4 p-4 min-w-[320px] max-w-sm bg-white rounded-xl shadow-lg border-l-4 ${borderClass}`;
+        
+        toast.innerHTML = `
+            <div class="flex-shrink-0"><div class="${iconColor} rounded-full p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${iconSvg}</svg></div></div>
+            <div class="flex-1 pt-0.5">
+                <h3 class="font-serif font-bold text-slate-800 text-sm leading-5">${title}</h3>
+                <p class="mt-1 text-sm text-slate-500 leading-relaxed">${message}</p>
+            </div>
+            <button onclick="this.parentElement.remove()" class="ml-4 text-slate-400 hover:text-slate-600"><svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg></button>
+        `;
+        this.container.appendChild(toast);
+        setTimeout(() => {
+            if(toast.parentElement) {
+                toast.classList.replace('toast-enter', 'toast-exit');
+                toast.addEventListener('animationend', () => toast.remove());
+            }
+        }, 5000);
+    }
+};
 
-// Handle file selection
-if (photoInput) {
-    photoInput.addEventListener("change", (e) => {
-        selectedFile = e.target.files[0];
-        if (!selectedFile) return;
+/* ================= 3. LOADING MANAGER ================= */
+const LoadingManager = {
+    show(button, text = 'Processing...') {
+        if (!button) return;
+        button.dataset.originalHTML = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `
+            <span class="flex items-center justify-center">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                ${text}
+            </span>
+        `;
+        button.classList.add('opacity-75', 'cursor-not-allowed');
+    },
+    hide(button) {
+        if (!button) return;
+        button.innerHTML = button.dataset.originalHTML || 'Save Changes';
+        button.disabled = false;
+        button.classList.remove('opacity-75', 'cursor-not-allowed');
+    }
+};
 
-        // Validate file type
-        const validTypes = ["image/jpeg", "image/png", "image/webp"];
-        if (!validTypes.includes(selectedFile.type)) {
-            alert("Please select a valid image file (JPG, PNG, or WEBP)");
-            photoInput.value = "";
-            selectedFile = null;
+/* ================= 4. MAIN LOGIC (IIFE) ================= */
+(() => {
+    // Configuration
+    const API_BASE_URL = "http://127.0.0.1:8000";
+
+    // State
+    let selectedFile = null;
+
+    // DOM Elements (Assigned in DOMContentLoaded)
+    let firstNameInput, lastNameInput, emailInput, phoneInput;
+    let profileName, profileEmail;
+    let profilePicSpan, profileImgTag, uploadBtn, cameraBtn, saveBtn, photoInput;
+    let dashboardProfileImg, userInitial, usernameSpan;
+
+    // ===================== INITIAL LOAD =====================
+    document.addEventListener("DOMContentLoaded", () => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            window.location.href = "login.html";
             return;
         }
 
-        // Validate file size (5MB)
-        if (selectedFile.size > 5 * 1024 * 1024) {
-            alert("File size must be less than 5MB");
-            photoInput.value = "";
-            selectedFile = null;
-            return;
-        }
+        // Initialize Elements
+        firstNameInput = document.getElementById("firstName");
+        lastNameInput = document.getElementById("lastName");
+        emailInput = document.getElementById("email");
+        phoneInput = document.getElementById("phone");
+        profileName = document.getElementById("profile-name");
+        profileEmail = document.getElementById("profile-email");
 
-        // Preview image
-        const reader = new FileReader();
-        reader.onload = () => {
-            profileImgTag.src = reader.result;
+        profilePicSpan = document.getElementById("profile-pic");
+        profileImgTag = document.getElementById("profile-img-tag");
+        uploadBtn = document.getElementById("upload-btn");
+        cameraBtn = document.getElementById("camera-btn");
+        saveBtn = document.getElementById("savebtn");
+        photoInput = document.getElementById("photo-input");
+
+        // Dashboard elements
+        dashboardProfileImg = document.getElementById("dashboard-profile-img");
+        userInitial = document.getElementById("user-initial");
+        usernameSpan = document.getElementById("username");
+
+        // Event Listeners
+        if (cameraBtn) cameraBtn.addEventListener("click", () => photoInput.click());
+        if (uploadBtn) uploadBtn.addEventListener("click", () => photoInput.click());
+        if (photoInput) photoInput.addEventListener("change", handleFileSelect);
+        if (saveBtn) saveBtn.addEventListener("click", handleSaveProfile);
+
+        // Fetch Data
+        fetchProfile(token);
+    });
+
+    // ===================== FETCH DATA =====================
+    async function fetchProfile(token) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/users/me`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+
+            if (!res.ok) {
+                if (res.status === 401) window.location.href = "login.html";
+                throw new Error("Failed to fetch profile");
+            }
+
+            const data = await res.json();
+
+            // Populate Form
+            if(firstNameInput) firstNameInput.value = data.first_name || "";
+            if(lastNameInput) lastNameInput.value = data.last_name || "";
+            if(emailInput) emailInput.value = data.email || "";
+            if(phoneInput) phoneInput.value = data.phone || "";
+            
+            // Update Headers
+            if(profileName) profileName.textContent = `${data.first_name || ""} ${data.last_name || ""}`.trim() || "User";
+            if(profileEmail) profileEmail.textContent = data.email || "Loading...";
+            if (usernameSpan) usernameSpan.textContent = `${data.first_name || ""} ${data.last_name || ""}`.trim() || "Account";
+
+            // Images
+            updateProfileImage(data);
+            updateDashboardImage(data);
+            
+            // Stats
+            fetchUserStats(token);
+            
+        } catch (error) {
+            console.error("Error fetching profile:", error);
+            ToastManager.show("Could not load profile data.", "error");
+        }
+    }
+
+    async function fetchUserStats(token) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/user/stats`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            
+            if (res.ok) {
+                const stats = await res.json();
+                const reportsCount = document.getElementById("reports-count");
+                const matchesCount = document.getElementById("matches-count");
+                const memberSince = document.getElementById("member-since");
+
+                if(reportsCount) reportsCount.textContent = stats.active_reports || 0;
+                if(matchesCount) matchesCount.textContent = stats.successful_matches || 0;
+                
+                if (stats.joined_date && memberSince) {
+                    const date = new Date(stats.joined_date);
+                    memberSince.textContent = `Since ${date.getFullYear()}`;
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching stats:", error);
+        }
+    }
+
+    // ===================== IMAGE LOGIC =====================
+    function updateProfileImage(data) {
+        if(!profileImgTag || !profilePicSpan) return;
+
+        if (data.profile_image && data.profile_image_mime) {
+            profileImgTag.src = `data:${data.profile_image_mime};base64,${data.profile_image}`;
             profileImgTag.classList.remove("hidden");
             profilePicSpan.classList.add("hidden");
-            
-            // Show success message
-            showToast("Photo uploaded successfully! Click 'Save Changes' to update.", "success");
-        };
-        reader.readAsDataURL(selectedFile);
-    });
-}
+        } else {
+            const initials = (data.first_name?.[0] || "") + (data.last_name?.[0] || "");
+            profilePicSpan.textContent = initials.toUpperCase() || "JD";
+            profileImgTag.classList.add("hidden");
+            profilePicSpan.classList.remove("hidden");
+        }
+    }
 
-// ------------------------
-// Save changes
-// ------------------------
-saveBtn.addEventListener("click", async (e) => {
-    e.preventDefault();
+    function updateDashboardImage(data) {
+        if (!dashboardProfileImg || !userInitial) return;
+        
+        if (data.profile_image && data.profile_image_mime) {
+            dashboardProfileImg.src = `data:${data.profile_image_mime};base64,${data.profile_image}`;
+            dashboardProfileImg.classList.remove("hidden");
+            userInitial.classList.add("hidden");
+        } else {
+            const initials = (data.first_name?.[0] || "") + (data.last_name?.[0] || "");
+            userInitial.textContent = initials.toUpperCase() || "U";
+            dashboardProfileImg.classList.add("hidden");
+            userInitial.classList.remove("hidden");
+        }
+    }
 
-    // Show loading state
-    saveBtn.disabled = true;
-    const originalText = saveBtn.innerHTML;
-    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-3"></i> Saving...';
+    // ===================== FILE HANDLING =====================
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
 
-    try {
-        let profile_image_base64 = null;
-        let mime_type = null;
-
-        if (selectedFile) {
-            // Convert file to base64
-            const base64 = await fileToBase64(selectedFile);
-            const splitData = base64.split(",");
-            mime_type = splitData[0].match(/:(.*?);/)[1];
-            profile_image_base64 = splitData[1];
+        // Validation
+        const validTypes = ["image/jpeg", "image/png", "image/webp"];
+        if (!validTypes.includes(file.type)) {
+            ToastManager.show("Please select a valid image (JPG, PNG, WEBP)", "error");
+            e.target.value = "";
+            return;
         }
 
-        await sendProfileUpdate(profile_image_base64, mime_type);
-        
-    } catch (error) {
-        console.error("Error saving profile:", error);
-        showToast("Failed to save profile. Please try again.", "error");
-    } finally {
-        // Reset button state
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = originalText;
-    }
-});
+        if (file.size > 5 * 1024 * 1024) { // 5MB
+            ToastManager.show("File size must be less than 5MB", "error");
+            e.target.value = "";
+            return;
+        }
 
-// Convert file to base64
-function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
+        selectedFile = file;
+
+        // Preview
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
+        reader.onload = () => {
+            if(profileImgTag && profilePicSpan) {
+                profileImgTag.src = reader.result;
+                profileImgTag.classList.remove("hidden");
+                profilePicSpan.classList.add("hidden");
+                ToastManager.show("Photo selected. Click 'Save Changes' to apply.", "success");
+            }
+        };
         reader.readAsDataURL(file);
-    });
-}
-
-async function sendProfileUpdate(imageBase64, mime) {
-    const payload = {
-        first_name: firstNameInput.value.trim(),
-        last_name: lastNameInput.value.trim(),
-        email: emailInput.value.trim(),
-        phone: phoneInput.value.trim(),
-        ...(imageBase64 && { profile_image: imageBase64 }),
-        ...(mime && { profile_image_mime: mime })
-    };
-
-    const res = await fetch("http://127.0.0.1:8000/users/profile", {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-    });
-
-    if (res.ok) {
-        showToast("Profile updated successfully!", "success");
-        
-        // Refresh profile data
-        await fetchProfile();
-        
-        // Reset file selection
-        selectedFile = null;
-        if (photoInput) photoInput.value = "";
-        
-    } else {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update profile");
     }
-}
 
-// Toast notification function
-function showToast(message, type = "success") {
-    // Remove existing toast
-    const existingToast = document.querySelector(".custom-toast");
-    if (existingToast) existingToast.remove();
+    // ===================== SAVE LOGIC =====================
+    async function handleSaveProfile(e) {
+        e.preventDefault();
+        
+        LoadingManager.show(saveBtn, "Saving Profile...");
 
-    // Create toast
-    const toast = document.createElement("div");
-    toast.className = `custom-toast fixed top-6 right-6 z-50 px-6 py-4 rounded-lg shadow-xl transform transition-all duration-300 ${
-        type === "error" ? "bg-red-500" : 
-        type === "success" ? "bg-green-500" : 
-        "bg-blue-500"
-    } text-white`;
-    
-    toast.innerHTML = `
-        <div class="flex items-center">
-            <i class="fas ${type === "success" ? "fa-check-circle" : "fa-exclamation-circle"} mr-3"></i>
-            <span>${message}</span>
-        </div>
-    `;
-    
-    document.body.appendChild(toast);
+        try {
+            const token = localStorage.getItem("token");
+            let profile_image_base64 = null;
+            let mime_type = null;
 
-    // Auto remove
-    setTimeout(() => {
-        toast.style.opacity = "0";
-        toast.style.transform = "translateY(-20px)";
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
+            if (selectedFile) {
+                const base64 = await fileToBase64(selectedFile);
+                const splitData = base64.split(",");
+                mime_type = splitData[0].match(/:(.*?);/)[1];
+                profile_image_base64 = splitData[1];
+            }
 
-// ------------------------
-// Initial fetch
-// ------------------------
-document.addEventListener("DOMContentLoaded", () => {
-    if (!token) {
-        window.location.href = "login.html";
-        return;
+            const payload = {
+                first_name: firstNameInput.value.trim(),
+                last_name: lastNameInput.value.trim(),
+                email: emailInput.value.trim(),
+                phone: phoneInput.value.trim(),
+                ...(profile_image_base64 && { profile_image: profile_image_base64 }),
+                ...(mime_type && { profile_image_mime: mime_type })
+            };
+
+            const res = await fetch(`${API_BASE_URL}/users/profile`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.message || "Failed to update profile");
+            }
+
+            ToastManager.show("Profile updated successfully!", "success");
+            
+            // Refresh to ensure all data is consistent
+            await fetchProfile(token);
+            
+            // Reset state
+            selectedFile = null;
+            if (photoInput) photoInput.value = "";
+
+        } catch (error) {
+            console.error("Error saving profile:", error);
+            ToastManager.show(error.message || "Failed to save profile.", "error");
+        } finally {
+            LoadingManager.hide(saveBtn);
+        }
     }
-    fetchProfile();
-});
+
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+})();

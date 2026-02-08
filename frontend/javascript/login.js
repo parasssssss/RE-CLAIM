@@ -1,3 +1,78 @@
+/* ================= TOAST NOTIFICATION SYSTEM ================= */
+const ToastManager = {
+    container: null,
+
+    // Initialize the container element
+    init() {
+        if (!document.getElementById('toast-container')) {
+            this.container = document.createElement('div');
+            this.container.id = 'toast-container';
+            // Fixed position top-right, high z-index
+            this.container.className = 'fixed top-5 right-5 z-[9999] flex flex-col gap-3 pointer-events-none';
+            document.body.appendChild(this.container);
+        } else {
+            this.container = document.getElementById('toast-container');
+        }
+    },
+
+    // Show a notification
+    show(message, type = 'error') {
+        this.init(); // Ensure container exists
+
+        // Create the toast element
+        const toast = document.createElement('div');
+        
+        // Premium styling based on type
+        const styles = type === 'error' 
+            ? 'border-red-500 bg-white' 
+            : 'border-green-500 bg-white';
+            
+        const icon = type === 'error'
+            ? `<div class="bg-red-100 rounded-full p-2 text-red-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>`
+            : `<div class="bg-green-100 rounded-full p-2 text-green-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></div>`;
+
+        const title = type === 'error' ? 'Action Failed' : 'Success';
+
+        // Set classes (matches your ReClaim theme: serif fonts, slate text, shadows)
+        toast.className = `
+            pointer-events-auto toast-enter 
+            flex items-start gap-4 p-4 min-w-[320px] max-w-sm
+            bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)]
+            border-l-4 ${styles}
+        `;
+
+        // Inner HTML
+        toast.innerHTML = `
+            <div class="flex-shrink-0">
+                ${icon}
+            </div>
+            <div class="flex-1 pt-0.5">
+                <h3 class="font-serif font-bold text-slate-800 text-sm leading-5">${title}</h3>
+                <p class="mt-1 text-sm text-slate-500 leading-relaxed">${message}</p>
+            </div>
+            <button onclick="this.parentElement.remove()" class="flex-shrink-0 ml-4 text-slate-400 hover:text-slate-600 transition-colors">
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+            </button>
+        `;
+
+        // Append to container
+        this.container.appendChild(toast);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            toast.classList.remove('toast-enter');
+            toast.classList.add('toast-exit');
+            toast.addEventListener('animationend', () => {
+                toast.remove();
+            });
+        }, 5000);
+    }
+};
+
+
+
 // Create reusable loading state manager
 const LoadingManager = {
     // Show loading state on button
@@ -187,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Enhanced login handler with loading animation
+// Enhanced login handler with Toast Notifications
 document.getElementById("loginBtn").addEventListener("click", async (e) => {
     e.preventDefault();
     
@@ -195,28 +271,28 @@ document.getElementById("loginBtn").addEventListener("click", async (e) => {
     const passwordInput = document.getElementById("loginPassword");
     const rememberCheckbox = document.getElementById("rememberMe");
     
-    // Validate inputs
+    // 1. Validation Checks
     if (!emailInput.value.trim() || !passwordInput.value.trim()) {
-        // Quick validation feedback
         if (!emailInput.value.trim()) {
             emailInput.classList.add('border-red-500', 'animate-shake');
+            // Trigger Toast for empty email
+            ToastManager.show("Please enter your email address."); 
             setTimeout(() => emailInput.classList.remove('animate-shake'), 600);
         }
-        if (!passwordInput.value.trim()) {
+        else if (!passwordInput.value.trim()) {
             passwordInput.classList.add('border-red-500', 'animate-shake');
+            ToastManager.show("Please enter your password.");
             setTimeout(() => passwordInput.classList.remove('animate-shake'), 600);
         }
         return;
     }
     
-    // Clear any previous error states
+    // Reset styles
     emailInput.classList.remove('border-red-500');
     passwordInput.classList.remove('border-red-500');
     
-    // Show loading animation
+    // Start Loading
     LoadingManager.showLoading(loginBtn);
-    
-    // Also add loading state to inputs
     emailInput.disabled = true;
     passwordInput.disabled = true;
     
@@ -226,9 +302,8 @@ document.getElementById("loginBtn").addEventListener("click", async (e) => {
     };
 
     try {
-        // Add timeout for slow network (optional)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
         
         const res = await fetch("http://127.0.0.1:8000/auth/login", {
             method: "POST",
@@ -241,103 +316,80 @@ document.getElementById("loginBtn").addEventListener("click", async (e) => {
         });
 
         clearTimeout(timeoutId);
-        
         const result = await res.json();
 
         if (res.ok) {
-            // Save credentials if remember me is checked
+            // --- SUCCESS LOGIC ---
             if (rememberCheckbox.checked) {
                 RememberMeManager.saveCredentials(emailInput.value.trim(), true);
             } else {
                 RememberMeManager.clearCredentials();
             }
             
-            // Success - show brief success animation
+            // Show Success Toast
+            ToastManager.show("Login successful! Redirecting...", "success");
+
+            // Success Button State
             loginBtn.innerHTML = `
-                <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-                    <svg class="h-5 w-5 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                </span>
                 <span class="flex items-center justify-center text-green-100">
-                    <span class="mr-2">Rediecting....</span>
+                   <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                   Redirecting...
                 </span>
             `;
-            loginBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            loginBtn.classList.add('bg-green-600');
             
-            const token = result.access_token;
-            console.log("JWT Token:", token);
-            localStorage.setItem("token", token);
-
-            // Ensure roleId is integer
+            // Token Handling
+            localStorage.setItem("token", result.access_token);
             const roleId = parseInt(result.role_id, 10);
             localStorage.setItem("role_id", roleId);
-            
-            // Store user info if available
-            if (result.user_id) {
-                localStorage.setItem("user_id", result.user_id);
-            }
-            
-            // Optional: Show success message
-            // alert("Login successful! User ID: " + result.user_id);
+            if (result.user_id) localStorage.setItem("user_id", result.user_id);
 
-            // Wait briefly for user to see success state, then redirect
+            // Redirect
             setTimeout(() => {
-                // Redirect based on role
-                if (roleId === 2) {
-                    window.location.href = "dashboard_admin.html";
-                } else if (roleId === 3) {
-                    window.location.href = "dashboard_staff.html";
-                } else {
-                    window.location.href = "dashboard_normie.html";
-                }
+                if (roleId === 1) window.location.href = "dashboard_super.html";
+                else if (roleId === 2) window.location.href = "dashboard_admin.html";
+                else if (roleId === 3) window.location.href = "dashboard_staff.html";
+                else window.location.href = "dashboard_normie.html";
             }, 800);
             
         } else {
-            // Server returned an error
-            const errorMessage = result.message || result.error || "Login failed";
-            console.error("Login error:", errorMessage);
+            // --- SERVER ERROR LOGIC ---
+            const errorMessage = result.message || result.error || "Invalid credentials.";
             
-            // Show error state on button
-            LoadingManager.showError(loginBtn, errorMessage);
+            // 1. Show the Toast Card
+            ToastManager.show(errorMessage, 'error');
             
-            // Re-enable inputs
+            // 2. Reset the button (Stop loading spinner)
+            LoadingManager.hideLoading(loginBtn);
+            
+            // 3. Re-enable inputs
             emailInput.disabled = false;
             passwordInput.disabled = false;
             
-            // Optional: Highlight problematic input
-            if (errorMessage.toLowerCase().includes('email')) {
-                emailInput.classList.add('border-red-500', 'animate-shake');
-                setTimeout(() => emailInput.classList.remove('animate-shake'), 600);
-            } else if (errorMessage.toLowerCase().includes('password')) {
-                passwordInput.classList.add('border-red-500', 'animate-shake');
-                setTimeout(() => passwordInput.classList.remove('animate-shake'), 600);
-            }
+            // 4. Highlight inputs red
+            emailInput.classList.add('border-red-500');
+            passwordInput.classList.add('border-red-500');
+            setTimeout(() => {
+                 emailInput.classList.remove('border-red-500');
+                 passwordInput.classList.remove('border-red-500');
+            }, 2000);
         }
 
     } catch (err) {
-        console.error("Network or other error:", err);
+        // --- NETWORK ERROR LOGIC ---
+        console.error("Error:", err);
         
-        // Show appropriate error message
         let errorMessage = "Something went wrong!";
-        if (err.name === 'AbortError') {
-            errorMessage = "Request timeout. Please try again.";
-        } else if (err.name === 'TypeError') {
-            errorMessage = "Network error. Please check your connection.";
-        }
+        if (err.name === 'AbortError') errorMessage = "Request timeout. Server took too long.";
+        else if (err.name === 'TypeError') errorMessage = "Unable to connect to server.";
         
-        // Show error state
-        LoadingManager.showError(loginBtn, errorMessage);
+        // Show Toast
+        ToastManager.show(errorMessage, 'error');
         
-        // Re-enable inputs
+        // Reset Interface
+        LoadingManager.hideLoading(loginBtn);
         emailInput.disabled = false;
         passwordInput.disabled = false;
-        
-        // Re-enable button after error
-        setTimeout(() => {
-            LoadingManager.hideLoading(loginBtn);
-            loginBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
-        }, 3000);
     }
 });
 

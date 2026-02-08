@@ -16,7 +16,14 @@
     // ===================== INITIAL FETCH =====================
     // This runs immediately when file loads
     (async () => {
+        // Get token immediately to pass to the business code fetcher
+        const token = localStorage.getItem("token");
+        
         await fetchCurrentUser();
+        
+        // ADD THIS LINE:
+        if(token) loadBusinessCode(token); 
+        
         fetchMatches(currentPage);
     })();
 
@@ -139,132 +146,137 @@
     }
 
     // ===================== RENDER COMPARISON CARD (MODAL) =====================
+function renderComparisonCard(match) {
+    const score = Math.round(match.similarity_score * 100);
     
-    function renderComparisonCard(match) {
-        const score = Math.round(match.similarity_score * 100);
-        
-        // Dynamic Status Banner
-        let bannerColor = "bg-gray-50 border-gray-200 text-gray-800";
-        let bannerIcon = "fa-info-circle";
-        let bannerTitle = "Status Unknown";
-        let bannerDesc = "Status is pending.";
+    // Dynamic Status Banner
+    let bannerColor = "bg-gray-50 border-gray-200 text-black"; // UPDATED: text-black
+    let bannerIcon = "fa-info-circle";
+    let bannerTitle = "Status Unknown";
+    let bannerDesc = "Status is pending.";
 
-        if(match.status === 'APPROVED') {
-            bannerColor = "bg-green-50 border-green-200 text-green-800";
-            bannerIcon = "fa-check-circle";
-            bannerTitle = "Match Approved";
-            bannerDesc = "This match has been verified. The guest has been notified.";
-        } else if(match.status === 'REJECTED') {
-            bannerColor = "bg-red-50 border-red-200 text-red-800";
-            bannerIcon = "fa-times-circle";
-            bannerTitle = "Match Rejected";
-            bannerDesc = "This match was marked as incorrect.";
-        } else if(match.status === 'PENDING') {
-            bannerColor = "bg-yellow-50 border-yellow-200 text-yellow-800";
-            bannerIcon = "fa-hourglass-half";
-            bannerTitle = "Verification Pending";
-            bannerDesc = "Please review the details below and approve if these items match.";
-        }
+    if(match.status === 'APPROVED') {
+        bannerColor = "bg-green-50 border-green-200 text-green-900"; // Darker green
+        bannerIcon = "fa-check-circle";
+        bannerTitle = "Match Approved";
+        bannerDesc = "This match has been verified. The guest has been notified.";
+    } else if(match.status === 'REJECTED') {
+        bannerColor = "bg-red-50 border-red-200 text-red-900"; // Darker red
+        bannerIcon = "fa-times-circle";
+        bannerTitle = "Match Rejected";
+        bannerDesc = "This match was marked as incorrect.";
+    } else if(match.status === 'PENDING') {
+        bannerColor = "bg-yellow-50 border-yellow-200 text-yellow-900"; // Darker yellow
+        bannerIcon = "fa-hourglass-half";
+        bannerTitle = "Verification Pending";
+        bannerDesc = "Please review the details below and approve if these items match.";
+    }
 
-        const foundImg = match.found.image_path ? `http://127.0.0.1:8000/${match.found.image_path}` : 'https://via.placeholder.com/300';
-        const lostImg = match.lost.image_path ? `http://127.0.0.1:8000/${match.lost.image_path}` : 'https://via.placeholder.com/300';
+    const foundImg = match.found.image_path ? `http://127.0.0.1:8000/${match.found.image_path}` : 'https://via.placeholder.com/300';
+    const lostImg = match.lost.image_path ? `http://127.0.0.1:8000/${match.lost.image_path}` : 'https://via.placeholder.com/300';
 
-        return `
-            <div class="flex flex-col h-full max-h-[90vh]">
-                <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                    <div>
-                        <h2 class="text-2xl font-serif font-bold text-gray-900">Match Analysis</h2>
-                        <p class="text-sm text-gray-500 mt-1">Ref ID: #${match.match_id}</p>
-                    </div>
-                    <div class="flex flex-col items-end">
-                        <div class="flex items-center gap-2">
-                             <div class="w-12 h-12 rounded-full ${score > 85 ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'} flex items-center justify-center font-bold text-sm">
-                                ${score}%
-                            </div>
-                            <div class="text-right">
-                                <p class="text-sm font-bold text-gray-900">AI Similarity Score</p>
-                            </div>
-                        </div>
-                    </div>
+    return `
+        <div class="flex flex-col h-full max-h-[90vh]">
+            <div class="px-8 py-6 border-b border-gray-200 flex items-center justify-between bg-white">
+                <div>
+                    <h2 class="text-2xl font-serif font-bold text-black">Match Analysis</h2>
+                    <p class="text-sm text-gray-800 mt-1 font-medium">Ref ID: #${match.match_id}</p>
                 </div>
-
-                <div class="overflow-y-auto p-8 bg-gray-50">
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 relative">
-                        
-                        <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex w-14 h-14 items-center justify-center rounded-full bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700 shadow-[0_10px_20px_-5px_rgba(202,138,4,0.5),inset_0_2px_4px_rgba(255,255,255,0.6)] border-4 border-white">
-    <span class="font-black text-black text-lg font-serif italic drop-shadow-sm pt-0.5 pr-0.5">VS</span>
-</div>
-
-                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group hover:border-green-200 transition-colors">
-                            <div class="bg-green-50/50 px-4 py-3 border-b border-green-100 flex items-center gap-2">
-                                <i class="fas fa-search-location text-green-600"></i>
-                                <span class="font-bold text-green-900 text-sm uppercase tracking-wide">Found Item (Inventory)</span>
-                            </div>
-                            <div class="h-64 overflow-hidden bg-gray-50 relative flex items-center justify-center p-2">
-    <img src="${foundImg}" 
-         class="max-w-full max-h-full object-contain shadow-sm rounded-lg"
-         onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'"
-         alt="Found Item">
-</div>
-                            <div class="p-5 space-y-3">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div><p class="text-xs text-gray-400 font-bold uppercase">Brand</p><p class="text-sm font-medium">${match.found.brand || "--"}</p></div>
-                                    <div><p class="text-xs text-gray-400 font-bold uppercase">Color</p><p class="text-sm font-medium">${match.found.color || "--"}</p></div>
-                                    <div class="col-span-2"><p class="text-xs text-gray-400 font-bold uppercase">Location Found</p><p class="text-sm font-medium">${match.found.lost_location || "Unknown"}</p></div>
-                                    <div class="col-span-2"><p class="text-xs text-gray-400 font-bold uppercase">Date</p><p class="text-sm font-medium">${new Date(match.found.created_at).toLocaleString()}</p></div>
-                                </div>
-                            </div>
+                <div class="flex flex-col items-end">
+                    <div class="flex items-center gap-2">
+                         <div class="w-12 h-12 rounded-full ${score > 85 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} flex items-center justify-center font-bold text-sm border border-gray-200">
+                            ${score}%
                         </div>
-
-                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group hover:border-gray-300 transition-colors">
-                            <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                                <i class="fas fa-user text-gray-600"></i>
-                                <span class="font-bold text-gray-900 text-sm uppercase tracking-wide">Guest Report (Lost)</span>
-                            </div>
-                            <div class="h-64 overflow-hidden bg-gray-50 relative flex items-center justify-center p-2">
-    <img src="${lostImg}" 
-         class="max-w-full max-h-full object-contain shadow-sm rounded-lg"
-         onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'"
-         alt="Lost Item">
-</div>
-                            <div class="p-5 space-y-3">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div><p class="text-xs text-gray-400 font-bold uppercase">Brand</p><p class="text-sm font-medium">${match.lost.brand || "--"}</p></div>
-                                    <div><p class="text-xs text-gray-400 font-bold uppercase">Color</p><p class="text-sm font-medium">${match.lost.color || "--"}</p></div>
-                                    <div class="col-span-2"><p class="text-xs text-gray-400 font-bold uppercase">Last Seen</p><p class="text-sm font-medium">${match.lost.lost_location || "Unknown"}</p></div>
-                                    <div class="col-span-2"><p class="text-xs text-gray-400 font-bold uppercase">Date Reported</p><p class="text-sm font-medium">${new Date(match.lost.created_at).toLocaleString()}</p></div>
-                                </div>
-                            </div>
+                        <div class="text-right">
+                            <p class="text-sm font-bold text-black">AI Similarity Score</p>
                         </div>
                     </div>
-
-                    <div class="${bannerColor} border rounded-xl p-4 flex gap-4 items-start shadow-sm">
-                        <div class="mt-0.5"><i class="fas ${bannerIcon} text-lg"></i></div>
-                        <div>
-                            <h4 class="font-bold text-sm uppercase tracking-wide">${bannerTitle}</h4>
-                            <p class="text-sm opacity-90 mt-1">${bannerDesc}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 px-8 py-5 border-t border-gray-100 flex flex-row-reverse gap-3">
-                    <button onclick="closeMatch()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition shadow-sm">
-                        Close
-                    </button>
-
-                    ${(currentUser?.role_id === 2 && match.status === "PENDING") ? `
-                        <button onclick="approveMatch(${match.match_id})" class="px-5 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition shadow-lg shadow-green-200 flex items-center gap-2">
-                            <i class="fas fa-check"></i> Confirm Match
-                        </button>
-                        <button onclick="rejectMatch(${match.match_id})" class="px-5 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition shadow-lg shadow-red-200 flex items-center gap-2">
-                            <i class="fas fa-times"></i> Reject
-                        </button>
-                    ` : ""}
                 </div>
             </div>
-        `;
-    }
+
+            <div class="overflow-y-auto p-8 bg-gray-100"> <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 relative">
+                    
+                    <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex w-14 h-14 items-center justify-center rounded-full bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700 shadow-lg border-4 border-white">
+                        <span class="font-black text-black text-lg font-serif italic drop-shadow-sm pt-0.5 pr-0.5">VS</span>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-gray-300 shadow-md overflow-hidden group">
+                        <div class="bg-green-100 px-4 py-3 border-b border-green-200 flex items-center gap-2">
+                            <i class="fas fa-search-location text-green-800"></i>
+                            <span class="font-black text-green-900 text-sm uppercase tracking-wide">Found Item (Inventory)</span>
+                        </div>
+                        <div class="h-64 overflow-hidden bg-white relative flex items-center justify-center p-2 border-b border-gray-100">
+                            <img src="${foundImg}" 
+                                 class="max-w-full max-h-full object-contain shadow-sm rounded-lg"
+                                 onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'"
+                                 alt="Found Item">
+                        </div>
+                        <div class="p-5 space-y-3">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><p class="text-xs text-gray-600 font-bold uppercase">Brand</p><p class="text-base font-bold text-black">${match.found.brand || "--"}</p></div>
+                                <div><p class="text-xs text-gray-600 font-bold uppercase">Color</p><p class="text-base font-bold text-black">${match.found.color || "--"}</p></div>
+                                <div class="col-span-2"><p class="text-xs text-gray-600 font-bold uppercase">Location Found</p><p class="text-base font-bold text-black">${match.found.lost_location || "Unknown"}</p></div>
+                                <div class="col-span-2"><p class="text-xs text-gray-600 font-bold uppercase">Date</p><p class="text-base font-bold text-black">${new Date(match.found.created_at).toLocaleString()}</p></div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-gray-200">
+                                <p class="text-xs text-gray-600 font-bold uppercase">Description</p>
+                                <p class="text-sm text-black font-medium mt-1 leading-relaxed">${match.found.description || "No description provided."}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-gray-300 shadow-md overflow-hidden group">
+                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex items-center gap-2">
+                            <i class="fas fa-user text-gray-800"></i>
+                            <span class="font-black text-gray-900 text-sm uppercase tracking-wide">Guest Report (Lost)</span>
+                        </div>
+                        <div class="h-64 overflow-hidden bg-white relative flex items-center justify-center p-2 border-b border-gray-100">
+                            <img src="${lostImg}" 
+                                 class="max-w-full max-h-full object-contain shadow-sm rounded-lg"
+                                 onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Error'"
+                                 alt="Lost Item">
+                        </div>
+                        <div class="p-5 space-y-3">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><p class="text-xs text-gray-600 font-bold uppercase">Brand</p><p class="text-base font-bold text-black">${match.lost.brand || "--"}</p></div>
+                                <div><p class="text-xs text-gray-600 font-bold uppercase">Color</p><p class="text-base font-bold text-black">${match.lost.color || "--"}</p></div>
+                                <div class="col-span-2"><p class="text-xs text-gray-600 font-bold uppercase">Last Seen</p><p class="text-base font-bold text-black">${match.lost.lost_location || "Unknown"}</p></div>
+                                <div class="col-span-2"><p class="text-xs text-gray-600 font-bold uppercase">Date Reported</p><p class="text-base font-bold text-black">${new Date(match.lost.created_at).toLocaleString()}</p></div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-gray-200">
+                                <p class="text-xs text-gray-600 font-bold uppercase">Description</p>
+                                <p class="text-sm text-black font-medium mt-1 leading-relaxed">${match.lost.description || "No description provided."}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="${bannerColor} border border-gray-300 rounded-xl p-4 flex gap-4 items-start shadow-sm bg-white">
+                    <div class="mt-0.5"><i class="fas ${bannerIcon} text-lg"></i></div>
+                    <div>
+                        <h4 class="font-black text-sm uppercase tracking-wide text-black">${bannerTitle}</h4>
+                        <p class="text-sm text-black font-medium mt-1">${bannerDesc}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 px-8 py-5 border-t border-gray-200 flex flex-row-reverse gap-3">
+                <button onclick="closeMatch()" class="px-5 py-2.5 bg-white border-2 border-gray-300 text-black font-bold rounded-xl hover:bg-gray-100 transition shadow-sm">
+                    Close
+                </button>
+
+                ${(currentUser?.role_id === 2 && match.status === "PENDING") ? `
+                    <button onclick="approveMatch(${match.match_id})" class="px-5 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition shadow-lg shadow-green-200 flex items-center gap-2 border border-green-700">
+                        <i class="fas fa-check"></i> Confirm Match
+                    </button>
+                    <button onclick="rejectMatch(${match.match_id})" class="px-5 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition shadow-lg shadow-red-200 flex items-center gap-2 border border-red-700">
+                        <i class="fas fa-times"></i> Reject
+                    </button>
+                ` : ""}
+            </div>
+        </div>
+    `;
+}
 
     // ===================== RENDER PAGE =====================
     function renderMatchesPage(page = 1) {
@@ -399,4 +411,34 @@
         }
     };
 
+
+// ===================== FETCH BUSINESS CODE =====================
+    async function loadBusinessCode(token) {
+        try {
+            const res = await fetch("http://127.0.0.1:8000/users/me/business-code", {
+                headers: { 
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                const codeEl = document.getElementById("header-business-code");
+                const containerEl = document.getElementById("business-info-display");
+
+                if (data.business_code) {
+                    if(codeEl) codeEl.textContent = data.business_code;
+                    // Show the container if it was hidden
+                    if(containerEl) containerEl.classList.remove("hidden");
+                    // Ensure the flex layout works if previously hidden
+                    if(containerEl) containerEl.classList.add("flex"); 
+                }
+            } else {
+                console.warn(`Business Code API returned ${res.status}`);
+            }
+        } catch (err) {
+            console.error("❌ Network error loading Business Code:", err);
+        }
+    }
 })();
