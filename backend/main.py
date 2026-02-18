@@ -2,9 +2,12 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from routes import auth_routes, item_routes, profile_routes, match_routes, admin_routes, onboarding_routes,user_routes,notification_routes,staff_routes,billing_routes,customer_routes,super_admin_routes
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 app=FastAPI(title="RE-CLAIM API")
-
+@app.get("/")
+def root():
+    return {"status": "Backend is running"}
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,4 +31,5 @@ app.include_router(customer_routes.router)
 app.include_router(super_admin_routes.router)
 
 # Serve uploaded images
+os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
