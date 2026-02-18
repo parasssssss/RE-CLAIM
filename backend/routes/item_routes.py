@@ -19,7 +19,7 @@ router = APIRouter(prefix="/items", tags=["Items"])
 
 @router.post("/report-item")
 def report_item(
-    background_tasks: BackgroundTasks, # <--- 1. Inject BackgroundTasks here
+    background_tasks: BackgroundTasks,
     item_type: str = Form(...),
     brand: str = Form(...),
     color: str = Form(...),
@@ -33,6 +33,9 @@ def report_item(
     if not item_type.strip() or not description.strip():
         raise HTTPException(status_code=400, detail="Item Type and Description are required.")
 
+    # Determine status based on user role
+    # Role 2 (Admin) & 3 (Super Admin) -> FOUND items
+    # Role 1 (User) -> LOST items
     status = "FOUND" if current_user.role_id in [2, 3] else "LOST"
 
     image_path = None
@@ -42,29 +45,27 @@ def report_item(
     if image:
         # --- A. Save Image Temporarily ---
         os.makedirs("uploads/items", exist_ok=True)
-        image_path = f"uploads/items/{image.filename}"
+        # Use a safe filename to prevent overwrites or path traversal
+        clean_filename = f"{current_user.user_id}_{image.filename}"
+        image_path = f"uploads/items/{clean_filename}"
         image_mime = image.content_type
         
+        # Write file to disk
         with open(image_path, "wb") as f:
             f.write(image.file.read())
 
-        # --- B. 🛑 STRICT AI CHECK ---
-        is_valid, ai_msg = validate_image_content(image_path, item_type)
+        # --- B. REMOVED STRICT AI VALIDATION HERE ---
+        # We are skipping validate_image_content() so you can test freely.
         
-        if not is_valid:
-            if os.path.exists(image_path):
-                os.remove(image_path)
-            print(f"🚫 BLOCKING REPORT: {ai_msg}")
-            raise HTTPException(status_code=400, detail=ai_msg)
-
-        # --- C. Generate embedding ---
+        # --- C. Generate embedding (DINOv2) ---
+        # This is critical for your new matching logic
         image_embedding = generate_image_embedding(image_path)
 
     # 2. Create Item in DB
     item = crud.create_item(
         db=db,
         user_id=current_user.user_id,
-        business_id=current_user.business_id,
+        business_id=current_user.business_id, # Ensure user model has business_id or handle None
         item_type=item_type,
         brand=brand,
         color=color,
@@ -76,28 +77,27 @@ def report_item(
         image_embedding=image_embedding
     )
 
-    # 3. Run Matching
+    # 3. Run Matching (Uses your new match_items logic)
     matches = run_ai_match_for_new_item(item, db)
 
     # =========================================================
-    # 4. ✅ NEW: INSTANT NOTIFICATION LOGIC
+    # 4. INSTANT NOTIFICATION LOGIC
     # =========================================================
     if matches:
         print(f"✨ Instant Match Found for item {item.item_id}. Triggering notifications...")
         
-        # We notify the user who just reported the item (if they lost it)
-        # OR we notify the owner of the lost item (if staff just found it)
-        
-        # Simple implementation: Notify current user if they just reported a LOST item that matched
+        # If I reported a LOST item and the system found a match (which is a FOUND item)
         if item.status == "LOST":
-            # 1. Create Dashboard Notification
-            # Note: We associate it with the first match for simplicity, 
-            # or you could loop if multiple matches exist.
-            best_match = matches[0] # Assuming matches is a list of objects or dicts
+            best_match = matches[0] # Take the top match
             
-            # Helper to safely get match_id depending on return type of run_ai_match...
-            match_id = getattr(best_match, 'match_id', None) or best_match.get('match_id')
+            # Helper to safely get match_id depending on return type
+            # matches is likely a list of Match objects from your CRUD
+            match_id = getattr(best_match, 'match_id', None) 
+            # If your CRUD returns dicts instead of objects, fallback to .get()
+            if not match_id and isinstance(best_match, dict):
+                match_id = best_match.get('match_id')
 
+            # 1. Create Dashboard Notification
             create_notification(
                 db=db,
                 user_id=current_user.user_id,
@@ -109,16 +109,20 @@ def report_item(
             )
 
             # 2. Send Email in Background
-            background_tasks.add_task(
-                send_match_found_task,
-                user_email=current_user.email,
-                item_type=item.item_type
-            )
-
+            if current_user.email:
+                background_tasks.add_task(
+                    send_match_found_task,
+                    user_email=current_user.email,
+                    item_type=item.item_type
+                )
+    
+    # Return Result
     return {
         "message": "Item reported successfully",
         "item_id": item.item_id,
-        "ai_matches": matches
+        "ai_matches": matches 
+        # Note: 'matches' here will be the list of MATCH OBJECTS created in DB.
+        # If run_ai_match_for_new_item returns simple dicts, that's what shows up.
     }
 
 # Get My Items Endpoint

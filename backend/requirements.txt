@@ -1,0 +1,31 @@
+# --- Core Web Framework ---
+fastapi
+uvicorn
+python-multipart
+pydantic
+email-validator
+
+# --- Database ---
+sqlalchemy
+psycopg2-binary
+
+# --- Authentication & Security ---
+python-jose[cryptography]
+passlib[bcrypt]
+python-dotenv
+
+# --- Utilities ---
+requests
+reportlab
+
+# --- AI & Image Processing (Optimized for Render) ---
+numpy
+scipy
+Pillow
+opencv-python-headless
+sentence-transformers
+scikit-learn
+
+# --- PyTorch (CPU Only - Critical for Render Free Tier) ---
+torch --index-url https://download.pytorch.org/whl/cpu
+torchvision --index-url https://download.pytorch.org/whl/cpu

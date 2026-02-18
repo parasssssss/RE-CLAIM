@@ -1,391 +1,595 @@
-import os
+import math
 import torch
-from typing import List, Tuple
+import torchvision.transforms as T
 from PIL import Image
-from sentence_transformers import SentenceTransformer, util
-import open_clip  # NEW LIBRARY
-from models import Item
+from sentence_transformers import SentenceTransformer, util,CrossEncoder
 import re
+import cv2
+import numpy as np
+import urllib.request
+from torchvision.models import resnet18, ResNet18_Weights
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 
-def extract_numbers(text):
-    """Returns a set of all numbers found in the text string."""
-    if not text: return set()
-    # Finds all standalone numbers (e.g., "12" in "iPhone 12")
-    return set(re.findall(r'\b\d+\b', str(text)))
+# =========================================================
+# 1. LOAD "LEVEL 3" MODELS (The Upgraded Brains)
+# =========================================================
+print("⚡ Loading Enhanced AI Models (DINOv2 + MPNet)...")
 
-
-
-# ==========================================
-# 1. LOAD UPGRADED MODELS (CPU Optimized)
-# ==========================================
-print("Loading Advanced AI Models... (SigLIP + MPNet)")
-
-# TEXT: Switch to MPNet (Better understanding of context than MiniLM)
+# TEXT MODEL: MPNet is still excellent, but you can swap string to 'thenlper/gte-base' if you want.
+# We stick to MPNet here for reliability.
 text_model = SentenceTransformer("all-mpnet-base-v2", device='cpu')
 
-# IMAGE: Switch to SigLIP (Better resolution 16x16 patch size vs old 32x32)
-# This model connects text and images much more accurately.
-clip_model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-16-SigLIP', pretrained='webli')
-tokenizer = open_clip.get_tokenizer('ViT-B-16-SigLIP')
+# IMAGE MODEL: DINOv2 (Facebook Research) - Best-in-class for object geometry.
+# We load the 'vits14' (Small) version. It is fast and accurate.
+dinov2_model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
+dinov2_model.eval()  # Set to evaluation mode (no training)
 
-INVALID_VALUES = {"test", "na", "n/a", "none", "", "unknown"}
 
-def clean(value: str | None):
-    if not value: return None
-    v = value.strip().lower()
-    return None if v in INVALID_VALUES else v
+# ✅ ADD THIS BLOCK: Load the "Judge" Model
+print("⚖️ Loading Cross-Encoder (The Judge)...")
+# This model is small (~80MB) but very smart at comparing two specific sentences
+cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 
-def create_item_text(item: Item) -> str:
-    # Combine fields to give the text model rich context
-    return f"{clean(item.brand) or ''} {clean(item.color) or ''} {clean(item.item_type) or ''} {clean(item.description) or ''}".strip()
 
-# ==========================================
-# 2. GENERATE VECTOR (Updated for SigLIP)
-# ==========================================
-def generate_image_embedding(image_path: str):
+# DINOv2 Image Pre-processing (Standard ImageNet transforms)
+dinov2_transforms = T.Compose([
+    T.Resize(256, interpolation=T.InterpolationMode.BICUBIC),
+    T.CenterCrop(224),
+    T.ToTensor(),
+    T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
+
+# =========================================================
+# 2. HELPER FUNCTIONS (Logic & Cleaning)
+# =========================================================
+
+def clean(text):
+    """Standardizes text for comparison."""
+    if not text: return ""
+    return re.sub(r'[^a-zA-Z0-9\s]', '', str(text).lower().strip())
+
+def extract_numbers(text):
+    """Finds all standalone numbers in text (e.g. '12' in 'iPhone 12')."""
+    if not text: return set()
+    return set(re.findall(r'\b\d+\b', str(text)))
+
+def create_item_text(item):
+    """Combines fields into a single rich text string for the AI."""
+    # We weight the 'Type' and 'Brand' heavily by repeating them or putting them first
+    return f"{item.item_type} {item.brand} {item.color} {item.description}".strip()
+
+def is_same_category(type1, type2):
     """
-    Generates embedding using the new SigLIP model.
+    Smart Synonym Check. 
+    Prevents 'Mobile' from being penalized against 'Phone'.
     """
-    if not image_path or not os.path.exists(image_path):
-        return None
-    try:
-        image = preprocess(Image.open(image_path)).unsqueeze(0)  # Preprocess & Add batch dim
-        with torch.no_grad():
-            embedding = clip_model.encode_image(image)
-            embedding /= embedding.norm(dim=-1, keepdim=True) # Normalize
-        return embedding[0].tolist() # Return list for JSON storage
-    except Exception as e:
-        print(f"Error generating embedding: {e}")
-        return None
+    t1, t2 = clean(type1), clean(type2)
+    if t1 == t2: return True
+    if t1 in t2 or t2 in t1: return True # "Smart Phone" vs "Phone"
 
-# ==========================================
-# 3. VALIDATE IMAGE (Updated to Zero-Shot)
-# ==========================================
-# ==========================================
-# 3. VALIDATE IMAGE (DROPDOWN ENFORCER)
-# ==========================================
-def validate_image_content(image_path: str, user_category: str) -> Tuple[bool, str]:
+    synonyms = [
+        {"phone", "mobile", "cell", "iphone", "android", "smartphone"},
+        {"laptop", "computer", "macbook", "notebook", "pc", "chromebook"},
+        {"tablet", "ipad", "kindle", "tab"},
+        {"audio", "headphone", "earbud", "airpod", "headset", "speaker"},
+        {"wallet", "purse", "billfold", "cardholder"},
+        {"bag", "backpack", "suitcase", "luggage", "totebag"},
+        {"keys", "key", "keyfob", "fob"},
+        {"id", "passport", "license", "card", "badge"}
+    ]
+
+    for group in synonyms:
+        if t1 in group and t2 in group:
+            return True
+    return False
+
+
+def is_generic_description(text):
     """
-    Validates that the image actually belongs to the user's selected category 
-    by comparing it against ALL available dropdown options.
+    Detects non-unique / mass-produced descriptions.
     """
-    print(f"\n--- 🔍 STRICT CATEGORY MATCHING ---")
-    print(f"Path: {image_path}, User Selected: '{user_category}'")
+    if not text:
+        return True
 
-    if not image_path or not user_category:
-        return True, "No data"
-
-    # 1. Define the "Universe" of your dropdown
-    # We map your HTML values to lists of visual descriptions the AI understands.
-    CATEGORY_DEFINITIONS = {
-        "phone": ["a smartphone", "an iPhone", "an android phone", "a tablet", "an iPad"],
-        "laptop": ["a laptop computer", "a macbook", "an open laptop", "a computer keyboard"],
-        "electronics": ["headphones", "a camera", "a speaker", "a power bank", "a computer mouse", "electronic cables"],
-        "watch": ["a wristwatch", "a smartwatch", "an apple watch", "a digital watch"],
-        "jewelry": ["a ring", "a necklace", "earring", "a bracelet", "diamond jewelry", "gold jewelry"],
-        "bag": ["a backpack", "a handbag", "a suitcase", "luggage", "a tote bag", "a shoulder bag"],
-        "wallet": ["a wallet", "a purse", "a leather wallet", "a credit card holder"],
-        "keys": ["a set of keys", "a car key", "a keychain", "metal keys"],
-        "clothing": ["a shirt", "a jacket", "a coat", "shoes", "sneakers", "pants", "a dress"],
-        "documents": ["an ID card", "a passport", "a driver license", "a paper document"],
-        "accessories": ["eyeglasses", "sunglasses", "a hat", "a cap", "an umbrella", "a belt"],
-        
-        # 2. The "Catch-All" (Other)
-        # We explicitly put "Water Bottle" and random items here. 
-        # If the AI sees a bottle, it will pick 'other'. If user picked 'electronics', it fails. Perfect.
-        "other": ["a water bottle", "a thermos", "food", "a toy", "a musical instrument", "a tool", "something else", "an object"]
+    GENERIC_TERMS = {
+        "black", "white", "wired", "wireless", "earphones", "headphones",
+        "charger", "cable", "usb", "type", "wallet", "bag",
+        "found", "near", "bus", "stop", "road", "station"
     }
 
-    # 3. Bad Quality Labels (To reject blur/darkness immediately)
-    BAD_IMAGE_LABELS = ["blurred undefined noise", "a black screen", "solid color image"]
+    words = set(clean(text).split())
+    informative_words = words - GENERIC_TERMS
 
-    # --- PREPARE DATA FOR AI ---
+    # If very few meaningful words → generic
+    return len(informative_words) <= 2
+
+def description_detail_mismatch(lost_desc, found_desc):
+    """
+    Penalizes when found item has extra unique details
+    not mentioned in lost description.
+    """
+    lost_words = set(clean(lost_desc).split())
+    found_words = set(clean(found_desc).split())
+
+    UNIQUE_FEATURES = {
+        "mic", "microphone", "volume", "button", "buttons",
+        "scratch", "scratched", "crack", "broken",
+        "missing", "damaged", "torn", "cut"
+    }
+
+    found_features = found_words & UNIQUE_FEATURES
+    lost_features = lost_words & UNIQUE_FEATURES
+
+    # Found mentions features that lost does not
+    unmatched = found_features - lost_features
+
+    if unmatched:
+        return 0.75  # reduce confidence by 25%
     
-    # Flatten the dictionary into two lists:
-    # all_labels = ["a smartphone", "a laptop", ...]
-    # label_to_category_map = {"a smartphone": "phone", "a laptop": "laptop", ...}
+    return 1.0
+
+
+# =========================================================
+# 3. CORE FUNCTIONS (The ones your Routes call)
+# =========================================================
+
+def generate_image_embedding(image_path: str):
+    """
+    Generates a DINOv2 embedding for the image.
+    Returns: List[float] (standard JSON-serializable list)
+    """
+    if not image_path:
+        return None
     
-    all_labels = []
-    label_to_category_map = {}
-
-    for cat_key, descriptions in CATEGORY_DEFINITIONS.items():
-        for desc in descriptions:
-            all_labels.append(desc)
-            label_to_category_map[desc] = cat_key
-
-    # Add bad labels (they map to 'invalid')
-    for bad in BAD_IMAGE_LABELS:
-        all_labels.append(bad)
-        label_to_category_map[bad] = "invalid"
-
     try:
-        # --- RUN AI PREDICTION (SigLIP) ---
-        image = preprocess(Image.open(image_path)).unsqueeze(0)
-        text = tokenizer(all_labels)
+        # 1. Load and Transform
+        img = Image.open(image_path).convert('RGB')
+        img_tensor = dinov2_transforms(img).unsqueeze(0)  # Add batch dimension
 
+        # 2. Forward Pass (No Grad for speed)
         with torch.no_grad():
-            image_features = clip_model.encode_image(image)
-            text_features = clip_model.encode_text(text)
-            
-            # Normalize
-            image_features /= image_features.norm(dim=-1, keepdim=True)
-            text_features /= text_features.norm(dim=-1, keepdim=True)
-
-            # Calculate probabilities
-            text_probs = (100.0 * image_features @ text_features.T).softmax(dim=-1)
+            # DINOv2 returns a dictionary or tensor depending on version. 
+            # We want the 'CLS' token or the raw output.
+            output = dinov2_model(img_tensor)
         
-        # --- ANALYZE RESULTS ---
-        probs = text_probs[0].tolist()
-        best_idx = probs.index(max(probs))
-        
-        best_label = all_labels[best_idx]
-        predicted_category = label_to_category_map[best_label]
-        confidence = probs[best_idx]
-
-        print(f"🧐 AI sees: '{best_label}'")
-        print(f"📊 Categorized as: '{predicted_category}' (Confidence: {confidence:.2%})")
-
-        # --- DECISION LOGIC ---
-
-        # Case 1: Image is garbage (Blurry/Black)
-        if predicted_category == "invalid":
-            return False, "Image is too blurry or unclear. Please upload a better photo."
-
-        # Case 2: Exact Match
-        if predicted_category == user_category:
-            if confidence < 0.20: # Sanity check (20% is low but acceptable if many options exist)
-                return True, "Match is weak, but accepted."
-            return True, "Verified."
-
-        # Case 3: Mismatch (The Logic You Wanted)
-        else:
-            # We enforce a threshold here. If the AI is wildly guessing (e.g. 5%), we might let it slide.
-            # But if it is confident (>30%) that it is WRONG, we block it.
-            if confidence > 0.30:
-                # If user selected "Other", we are lenient. "Other" can essentially be anything.
-                if user_category == "other":
-                    return True, "Allowed under 'Other'."
-                
-                # If AI thinks it is "Other" (e.g. Bottle) but User said "Electronics" -> BLOCK.
-                return False, f"You selected '{user_category}', but this image looks like '{predicted_category}' ({best_label})."
-            
-            else:
-                # AI is confused (low confidence). We usually allow this to avoid frustrating users.
-                return True, "Uncertain match, allowed."
+        # 3. Flatten and Convert to List
+        # Output shape is [1, 384] for vits14
+        embedding = output[0].tolist()
+        return embedding
 
     except Exception as e:
-        print(f"Validation Error: {e}")
-        return True, "Validation skipped due to error"
+        print(f"❌ Error generating DINOv2 embedding: {e}")
+        return None
 
 
-# ==========================================
-# 4. MATCHING LOGIC (Smarter Scoring)
-# ==========================================
-def match_items(lost_items: List[Item], found_items: List[Item]):
+def match_items(lost_items, found_items):
     matches = []
 
-    print("⚡ Running Smart Match...")
+    VARIANTS = {"mini", "pro", "promax", "max", "plus"}
 
     for lost in lost_items:
-        # Pre-compute Lost Text Embedding
-        lost_text = create_item_text(lost)
-        lost_text_emb = text_model.encode(lost_text, convert_to_tensor=True)
+        lost_desc = clean(lost.description)
+        lost_desc_emb = text_model.encode(lost_desc, convert_to_tensor=True)
 
         for found in found_items:
-            if lost.item_id == found.item_id: continue
+            # -----------------------------
+            # 1. CATEGORY GATE (STRICT)
+            # -----------------------------
+            if lost.item_type.lower() != found.item_type.lower():
+                continue
 
-            # 1. Text Similarity (MPNet)
-            found_text = create_item_text(found)
-            found_text_emb = text_model.encode(found_text, convert_to_tensor=True)
-            text_score = util.cos_sim(lost_text_emb, found_text_emb).item()
+            found_desc = clean(found.description)
+            found_desc_emb = text_model.encode(found_desc, convert_to_tensor=True)
 
-            # 2. Image Similarity (SigLIP)
+            # -----------------------------
+            # 2. DESCRIPTION SIMILARITY (PRIMARY – SOFT GATE)
+            # -----------------------------
+            desc_score = util.cos_sim(lost_desc_emb, found_desc_emb).item()
+
+            if desc_score < 0.20:
+                continue
+
+            # -----------------------------
+            # 3. CROSS-ENCODER (DESCRIPTION ONLY)
+            # -----------------------------
+            pair = [lost_desc, found_desc]
+            logit = cross_encoder.predict(pair)
+            desc_score = 1 / (1 + math.exp(-logit))
+
+            if desc_score < 0.40:
+                continue
+
+            # -----------------------------
+            # 4. GENERIC DESCRIPTION PENALTY
+            # -----------------------------
+            if is_generic_description(lost.description):
+                desc_score *= 0.75
+
+            if is_generic_description(found.description):
+                desc_score *= 0.80
+
+            # -----------------------------
+            # 5. BASE SCORE = DESCRIPTION (DOMINANT)
+            # -----------------------------
+            final_score = desc_score * 0.70
+
+            # -----------------------------
+            # 6. BRAND BOOST (SECOND PRIORITY)
+            # -----------------------------
+            if lost.brand and found.brand:
+                if lost.brand.lower() == found.brand.lower():
+                    final_score += 0.15
+                else:
+                    final_score -= 0.05
+
+            # -----------------------------
+            # 7. COLOR BOOST (SMALL)
+            # -----------------------------
+            if lost.color and found.color:
+                if lost.color.lower() == found.color.lower():
+                    final_score += 0.05
+
+            # -----------------------------
+            # 🚫 8. MODEL NUMBER MISMATCH PENALTY (CRITICAL)
+            # -----------------------------
+            lost_nums = extract_numbers(lost.description)
+            found_nums = extract_numbers(found.description)
+
+            if lost_nums and found_nums and lost_nums != found_nums:
+                final_score *= 0.55   # strong downgrade (e.g. 13 vs 14)
+
+            # -----------------------------
+            # 🚫 9. VARIANT MISMATCH PENALTY (Pro / Pro Max / Mini)
+            # -----------------------------
+            lost_words = set(lost_desc.split())
+            found_words = set(found_desc.split())
+
+            lost_variants = lost_words & VARIANTS
+            found_variants = found_words & VARIANTS
+
+            if lost_variants and found_variants and lost_variants != found_variants:
+                final_score *= 0.65
+
+            # -----------------------------
+            # 10. IMAGE SIMILARITY (OPTIONAL SUPPORT)
+            # -----------------------------
             image_score = 0.0
-            has_image_match = False
-
             if lost.image_embedding and found.image_embedding:
                 try:
-                    # Convert stored lists back to Tensors
-                    emb1 = torch.tensor(lost.image_embedding)
-                    emb2 = torch.tensor(found.image_embedding)
-                    
-                    # SigLIP vectors are already normalized in generate_image_embedding
-                    image_score = util.cos_sim(emb1, emb2).item()
-                    has_image_match = True
+                    lost_img = torch.tensor(lost.image_embedding)
+                    found_img = torch.tensor(found.image_embedding)
+                    image_score = util.cos_sim(lost_img, found_img).item()
+                    final_score += image_score * 0.10
                 except:
-                    pass 
+                    pass
 
-            # 3. SMART SCORING LOGIC
-            # If text is extremely high (User copied description), trust it.
-            if text_score > 0.90:
-                final_score = text_score
-            # If image is extremely high (Exact visual match), trust it.
-            elif has_image_match and image_score > 0.92:
-                final_score = image_score
-            # Otherwise, mix them. 
-            elif has_image_match:
-                # Give slightly more weight to Text because images can be misleading (lighting/angle)
-                final_score = (text_score * 0.65) + (image_score * 0.35)
-            else:
-                final_score = text_score
+            # -----------------------------
+            # 11. LOCATION BOOST (WEAK)
+            # -----------------------------
+            if (
+                hasattr(lost, "location") and hasattr(found, "location") and
+                lost.location and found.location and
+                lost.location.lower() == found.location.lower()
+            ):
+                final_score += 0.05
 
-           # 4. Boosters & Penalties (Smart Brand Logic)
-            b_lost = clean(lost.brand)
-            b_found = clean(found.brand)
+            # -----------------------------
+            # 12. EXACT IMAGE MATCH OVERRIDE
+            # -----------------------------
+            if image_score > 0.85 and verify_exact_match(lost, found):
+                final_score = min(final_score + 0.20, 0.99)
 
-            if b_lost and b_found:
-                # Case A: Exact Match -> Boost Score
-                if b_lost == b_found:
-                    final_score += 0.05
-                # Case B: Definite Mismatch -> Penalize Score
-                elif b_lost not in b_found and b_found not in b_lost:
-                    final_score -= 0.25
+            # -----------------------------
+            # 13. FINAL CLAMP & THRESHOLD
+            # -----------------------------
+            final_score = max(0.0, min(final_score, 0.99))
 
-            # ---------------------------------------------------------
-            # 🛡️ STRICT NUMBER CHECK (Distinguish Models like 12 vs 14)
-            # ---------------------------------------------------------
-            # 👇 THIS BLOCK MUST BE OUTSIDE THE 'if b_lost' BLOCK 👇
-            
-            # 1. Get numbers from Item Type + Description
-            nums_lost = extract_numbers(f"{lost.item_type} {lost.description}")
-            nums_found = extract_numbers(f"{found.item_type} {found.description}")
-
-            # 2. Only run if BOTH items mention numbers
-            if len(nums_lost) > 0 and len(nums_found) > 0:
-                # 3. If they have NO numbers in common -> Penalty
-                if not nums_lost.intersection(nums_found):
-                    print(f"⚠️ Model Mismatch: {nums_lost} vs {nums_found}")
-                    final_score -= 0.15  # Penalize score
-            
-            # 👆 END OF NEW BLOCK 👆
-
-
-
-            # ---------------------------------------------------------
-            # 🛡️ 4. SUFFIX/VARIANT CHECK (The "Pro" vs "Non-Pro" Guard)
-            # ---------------------------------------------------------
-            # Define words that change the model significantly
-            # Comprehensive list of Tech Suffixes & Variants
-            variants = {
-                # 📱 Common Phone Suffixes
-                "pro", "max", "plus", "ultra", "mini", "lite", "air", "se", "fe", "go",
-                "prime", "zoom", "active", "sport", "stylus", "play", "power", 
-                
-                # 🔢 Single Letter Variants (Crucial for Pixel 6a, iPhone 6s, Redmi 9i, etc.)
-                "s", "a", "c", "i", "e", "x", "t", "z", "gt", 
-                
-                # 💻 Laptop/Tablet specific
-                "slim", "carbon", "yoga", "envy", "spectre", "alienware", "rog", "tuf", 
-                "zenbook", "vivobook", "pavilion", "latitude", "precision", "xps",
-                
-                # ⌚ Wearables & Audio
-                "classic", "frontier", "fit", "watch", "band", "buds", "pods", "nc", "tws",
-                
-                # 📐 Form Factors
-                "fold", "flip", "edge", "curved", "note", "duos",
-                
-                # 🎮 Gaming/GPU (If someone loses a GPU/Console)
-                "ti", "super", "oc", "oled", "digital"
-            }
-            
-            # ---------------------------------------------------------
-            # 🛡️ 4. SUFFIX/VARIANT CHECK (Strict Mode)
-            # ---------------------------------------------------------
-            
-            # Helper to extract standalone variants AND attached ones (e.g., "6a" -> "a")
-            def get_variants(text):
-                if not text: return set()
-                # 1. Clean and lowercase
-                text = str(text).lower()
-                # 2. Regex to split words AND separate numbers from letters
-                # e.g., "iPhone 12Pro Max" -> ['iphone', '12', 'pro', 'max']
-                # e.g., "Pixel 6a" -> ['pixel', '6', 'a']
-                tokens = re.findall(r'[a-z]+|\d+', text)
-                
-                # 3. Return only tokens that are in our restricted 'variants' set
-                return {t for t in tokens if t in variants}
-
-            vars_lost = get_variants(f"{lost.item_type} {lost.description}")
-            vars_found = get_variants(f"{found.item_type} {found.description}")
-
-            # Only run if we have a high Base Score (matches the main item)
-            if final_score > 0.85:
-                # If one has a variant the other lacks -> PENALTY
-                # e.g. Lost={'pro'}, Found=set() -> Penalty
-                # e.g. Lost={'a'}, Found=set() (Pixel 6a vs 6) -> Penalty
-                if vars_lost != vars_found:
-                    print(f"⚠️ Variant Mismatch: {vars_lost} vs {vars_found}")
-                    final_score -= 0.25  # Adjust to -0.25 if you want a HARD REJECT
-
-            # Clamp Score (Ensure it stays between 0% and 100%)
-            final_score = max(0.0, min(final_score, 1.0))
-            
-            # 5. Thresholds
-            # We assume anything above 75% is a "Likely Match"
-            if final_score >= 0.75:
+            if final_score >= 0.60:
                 matches.append({
                     "lost_item_id": lost.item_id,
                     "found_item_id": found.item_id,
-                    "similarity_score": float(final_score),
-                    "status": "PENDING"
+                    "similarity_score": round(final_score, 4)
                 })
 
     return matches
 
-# ==========================================
-# 5. VISUAL SEARCH (Updated for SigLIP)
-# ==========================================
+
+# ... (Previous code: DINOv2 loading, transforms, and match_items function) ...
+
+# =========================================================
+# 4. FRONTEND SEARCH FUNCTIONS (Search by Image)
+# =========================================================
+
 def encode_image(image_obj):
-    """ Used by frontend for 'Search by Image' """
+    """
+    Used by frontend for 'Search by Image'.
+    Converts a PIL Image into a DINOv2 embedding tensor.
+    """
     try:
-        image = preprocess(image_obj).unsqueeze(0)
+        # Ensure image is RGB (DINOv2 expects 3 channels)
+        if image_obj.mode != "RGB":
+            image_obj = image_obj.convert("RGB")
+            
+        # 1. Transform using the DINOv2 transforms we defined earlier
+        # Shape becomes [1, 3, 224, 224]
+        image_tensor = dinov2_transforms(image_obj).unsqueeze(0)
+        
+        # 2. Forward Pass
         with torch.no_grad():
-            embedding = clip_model.encode_image(image)
-            embedding /= embedding.norm(dim=-1, keepdim=True)
-        return embedding # Return Tensor
+            output = dinov2_model(image_tensor)
+        
+        # Output is [1, 384] (for vits14). 
+        # We return the Tensor directly for cosine calc.
+        return output 
+        
     except Exception as e:
-        print(f"Error encoding: {e}")
+        print(f"❌ Error encoding search image: {e}")
         return None
 
-def find_visual_matches(query_embedding, candidates: List, top_k=5):
+
+def find_visual_matches(query_embedding, candidates: list, top_k=5):
     valid_candidates = []
     candidate_embeddings = []
 
-    # Filter invalid candidates
+    expected_dim = query_embedding.shape[1]  # 384
+
     for item in candidates:
-        if hasattr(item, 'image_embedding') and item.image_embedding:
+        emb = getattr(item, 'image_embedding', None)
+        if emb and len(emb) == expected_dim:
             valid_candidates.append(item)
-            candidate_embeddings.append(item.image_embedding)
+            candidate_embeddings.append(emb)
 
-    if not valid_candidates: return []
-
-    # Stack embeddings
-    try:
-        candidate_matrix = torch.tensor(candidate_embeddings) # List of lists -> Tensor
-    except:
+    if not valid_candidates:
         return []
 
-    # Calculate Cosine Similarity
-    # query_embedding is a Tensor [1, 768], candidate_matrix is [N, 768]
+    candidate_matrix = torch.tensor(candidate_embeddings)
+
     scores = util.cos_sim(query_embedding, candidate_matrix)[0]
 
     scored_results = []
     for idx, score_tensor in enumerate(scores):
         score_val = score_tensor.item()
-        
-        if score_val > 0.65: # SigLIP is stricter, so 0.65 is a good visual match
+
+        if score_val > 0.60:
             item = valid_candidates[idx]
             scored_results.append({
                 "item_id": item.item_id,
                 "name": item.item_type,
                 "description": item.description,
-                "image_url": getattr(item, 'image_path', ""), 
+                "image_url": getattr(item, 'image_path', ""),
                 "match_confidence": f"{int(score_val * 100)}%",
                 "raw_score": score_val,
-                "location": getattr(item, 'lost_location', "Unknown")
+                "location": getattr(item, 'lost_location', "Unknown"),
+                "status": item.status
             })
 
     scored_results.sort(key=lambda x: x['raw_score'], reverse=True)
     return scored_results[:top_k]
+
+
+def verify_exact_match(img_path1, img_path2):
+    """
+    Verifies if two images are of the EXACT same physical object 
+    by matching unique features (scratches, patterns, edges).
+    
+    Returns: True if strong match, False otherwise.
+    """
+    try:
+        # 1. Load Images in Grayscale (Better for feature detection)
+        # Handle both local paths and URLs
+        def load_img(path):
+            if path.startswith("http"):
+                req = urllib.request.urlopen(path)
+                arr = np.asarray(bytearray(req.read()), dtype=np.uint8)
+                return cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
+            return cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+
+        img1 = load_img(img_path1)
+        img2 = load_img(img_path2)
+
+        if img1 is None or img2 is None: return False
+
+        # 2. Initialize ORB Detector (The "Fingerprint Scanner")
+        orb = cv2.ORB_create(nfeatures=1000)
+
+        # 3. Find Keypoints and Descriptors
+        kp1, des1 = orb.detectAndCompute(img1, None)
+        kp2, des2 = orb.detectAndCompute(img2, None)
+
+        if des1 is None or des2 is None: return False
+
+        # 4. Match Features using Brute Force with Hamming Distance
+        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        matches = bf.match(des1, des2)
+
+        # 5. Sort matches by distance (Best matches first)
+        matches = sorted(matches, key=lambda x: x.distance)
+
+        # 6. Strict Verification Logic
+        # We look at the top 10% of matches. 
+        # If their distance is very low, it's the same object.
+        top_n = max(1, int(len(matches) * 0.15))
+        good_matches = matches[:top_n]
+        
+        # Calculate average distance of best matches (Lower is better)
+        if not good_matches: return False
+        avg_dist = sum(m.distance for m in good_matches) / len(good_matches)
+
+        # THRESHOLD: 
+        # < 30: Almost identical images
+        # < 50: Same object, different angle/lighting
+        # > 60: Different objects
+        print(f"🔍 Feature Verification Dist: {avg_dist:.2f} (Matches: {len(good_matches)})")
+        
+        return avg_dist < 55.0
+
+    except Exception as e:
+        print(f"⚠️ Verification Error: {e}")
+        return False
+    
+
+# =========================================================
+# 6. CATEGORY VALIDATION (REPLACEMENT FOR CLIP)
+# =========================================================
+
+# Load a tiny standard classifier (ResNet18) for category checking
+# This is independent of DINOv2. It just knows 1000 common objects.
+try:
+    classifier_weights = ResNet18_Weights.DEFAULT
+    classifier_model = resnet18(weights=classifier_weights)
+    classifier_model.eval()
+    classifier_transforms = classifier_weights.transforms()
+    print("✅ Loaded ResNet18 for Category Validation")
+except Exception as e:
+    print(f"⚠️ Could not load Classifier: {e}")
+    classifier_model = None
+
+def validate_image_content(image_path: str, user_category: str) -> tuple[bool, str]:
+    """
+    Validates that the image roughly matches the user's selected category.
+    Uses ResNet18 (ImageNet) to predict the object class.
+    """
+    if not image_path or not user_category or classifier_model is None:
+        return True, "Skipped"
+
+    # 1. Standardize User Category
+    user_cat = user_category.lower().strip()
+    
+    # 2. Define Mappings (ImageNet Class IDs -> Your Dropdown Options)
+    # These are partial string matches for ImageNet labels
+    VALID_KEYWORDS = {
+        "phone": ["phone", "cellular", "mobile", "hand-held", "ipod"],
+        "laptop": ["laptop", "notebook", "computer", "keyboard", "screen", "monitor"],
+        "electronics": ["camera", "lens", "mouse", "speaker", "radio", "player", "cable", "device"],
+        "watch": ["watch", "clock", "stopwatch", "timepiece"],
+        "jewelry": ["ring", "necklace", "bracelet", "earring", "gold", "diamond"],
+        "bag": ["bag", "backpack", "satchel", "purse", "suitcase", "luggage", "wallet"],
+        "wallet": ["wallet", "purse", "billfold"],
+        "keys": ["key", "lock", "metal"], # ImageNet is bad at keys, but we try
+        "clothing": ["shirt", "jersey", "coat", "jacket", "shoe", "pant", "dress", "jean", "cloth"],
+        "accessories": ["glass", "hat", "cap", "helmet", "umbrella", "belt"],
+        "other": [] # Always allow
+    }
+
+    # If category isn't in our list (e.g. "Documents"), skip strict check
+    if user_cat not in VALID_KEYWORDS and user_cat != "other":
+        return True, "Category not strictly enforced"
+
+    try:
+        # 3. Load and Predict
+        img = Image.open(image_path).convert('RGB')
+        batch = classifier_transforms(img).unsqueeze(0)
+
+        with torch.no_grad():
+            prediction = classifier_model(batch).squeeze(0).softmax(0)
+        
+        # Get Top 3 Predictions
+        class_id = prediction.argmax().item()
+        score = prediction[class_id].item()
+        category_name = classifier_weights.meta["categories"][class_id]
+        
+        # Get Top 3 for logging
+        top3_indices = torch.topk(prediction, 3).indices.tolist()
+        top3_names = [classifier_weights.meta["categories"][i] for i in top3_indices]
+        
+        print(f"🧐 AI sees: {top3_names} (Conf: {score:.2%})")
+
+        # 4. Decision Logic
+        
+        # If confidence is very low (< 5%), the image is likely weird/blurry. 
+        # We let it slide to avoid blocking valid but weird photos.
+        if score < 0.05:
+            return True, "Low confidence match allowed."
+
+        # If user selected "Other", allow anything.
+        if user_cat == "other":
+            return True, "Allowed."
+
+        # Check if ANY of the top 3 predictions match our keywords
+        is_match = False
+        allowed_keywords = VALID_KEYWORDS.get(user_cat, [])
+        
+        for pred_name in top3_names:
+            for keyword in allowed_keywords:
+                if keyword in pred_name.lower():
+                    is_match = True
+                    break
+            if is_match: break
+
+        if is_match:
+            return True, "Verified."
+        
+        # 5. Strict Rejection Logic
+        # Only reject if we are reasonably sure it's WRONG
+        # e.g. User says "Laptop" but AI sees "Water Bottle" with 40% confidence.
+        if score > 0.20:
+             return False, f"This looks like a '{top3_names[0]}', not a '{user_category}'."
+        
+        return True, "Uncertain match, allowed."
+
+    except Exception as e:
+        print(f"❌ Validation Error: {e}")
+        return True, "Error skipped"
+
+
+# =========================================================
+# 6. EXACT FEATURE MATCHER (The "Google Lens" Logic)
+# =========================================================
+
+def verify_exact_match(img_path1: str, img_path2: str) -> bool:
+    """
+    Compares two images looking for EXACT unique features (scratches, logos, patterns).
+    Returns True if they are physically the same object.
+    """
+    try:
+        # Helper to load image from Local Path or URL
+        def load_image(path):
+            if path.startswith("http"):
+                req = urllib.request.urlopen(path)
+                arr = np.asarray(bytearray(req.read()), dtype=np.uint8)
+                return cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
+            return cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+
+        # 1. Load images in Grayscale
+        img1 = load_image(img_path1)
+        img2 = load_image(img_path2)
+
+        if img1 is None or img2 is None:
+            return False
+
+        # 2. Initialize ORB Detector
+        orb = cv2.ORB_create(nfeatures=1000)
+
+        # 3. Find Keypoints
+        kp1, des1 = orb.detectAndCompute(img1, None)
+        kp2, des2 = orb.detectAndCompute(img2, None)
+
+        if des1 is None or des2 is None:
+            return False
+
+        # 4. Match features (Brute Force Hamming)
+        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        matches = bf.match(des1, des2)
+
+        # 5. Filter & Score
+        matches = sorted(matches, key=lambda x: x.distance)
+        
+        # Take top 15% of matches
+        top_n = max(1, int(len(matches) * 0.15))
+        good_matches = matches[:top_n]
+
+        if len(good_matches) < 5: 
+            return False # Not enough data
+
+        avg_dist = sum(m.distance for m in good_matches) / len(good_matches)
+
+        print(f"🔍 Feature Verification Dist: {avg_dist:.2f} (Matches: {len(good_matches)})")
+
+        # THRESHOLD: Lower is better. < 50 is usually a specific object match.
+        return avg_dist < 50.0
+
+    except Exception as e:
+        print(f"⚠️ Feature Verification Failed: {e}")
+        return False
