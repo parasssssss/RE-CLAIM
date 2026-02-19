@@ -298,7 +298,7 @@ class EnhancedRegistration {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000);
             const API_BASE =
-  window.location.hostname === "localhost"
+  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:8000"
     : "https://reclaim-backend-nqd4.onrender.com";
 

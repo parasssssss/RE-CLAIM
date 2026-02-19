@@ -5,10 +5,14 @@ from routes import auth_routes, profile_routes,admin_routes, onboarding_routes,u
 #from routes import match_routes
 from fastapi.middleware.cors import CORSMiddleware
 import os
+
+from database import engine
+from models import Base
 from dotenv import load_dotenv
 load_dotenv()
 
 app=FastAPI(title="RE-CLAIM API")
+Base.metadata.create_all(bind=engine)
 @app.get("/")
 def root():
     return {"status": "Backend is running"}
