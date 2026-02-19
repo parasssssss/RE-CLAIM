@@ -1,4 +1,5 @@
 import math
+from xml.parsers.expat import model
 import torch
 import torchvision.transforms as T
 from PIL import Image
@@ -13,24 +14,54 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 
 # =========================================================
-# 1. LOAD "LEVEL 3" MODELS (The Upgraded Brains)
+# LAZY MODEL HOLDERS (Render-Safe)
 # =========================================================
-print("⚡ Loading Enhanced AI Models (DINOv2 + MPNet)...")
 
-# TEXT MODEL: MPNet is still excellent, but you can swap string to 'thenlper/gte-base' if you want.
-# We stick to MPNet here for reliability.
-text_model = SentenceTransformer("all-mpnet-base-v2", device='cpu')
-
-# IMAGE MODEL: DINOv2 (Facebook Research) - Best-in-class for object geometry.
-# We load the 'vits14' (Small) version. It is fast and accurate.
-dinov2_model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
-dinov2_model.eval()  # Set to evaluation mode (no training)
+_text_model = None
+_dinov2_model = None
+_cross_encoder = None
+_classifier_model = None
+_classifier_transforms = None
+_classifier_weights = None
 
 
-# ✅ ADD THIS BLOCK: Load the "Judge" Model
-print("⚖️ Loading Cross-Encoder (The Judge)...")
-# This model is small (~80MB) but very smart at comparing two specific sentences
-cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+def get_text_model():
+    global _text_model
+    if _text_model is None:
+        print("🧠 Lazy Loading MPNet...")
+        _text_model = SentenceTransformer("all-mpnet-base-v2", device="cpu")
+    return _text_model
+
+
+def get_dinov2_model():
+    global _dinov2_model
+    if _dinov2_model is None:
+        print("🖼️ Lazy Loading DINOv2...")
+        _dinov2_model = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14")
+        _dinov2_model.eval()
+    return _dinov2_model
+
+
+def get_cross_encoder():
+    global _cross_encoder
+    if _cross_encoder is None:
+        print("⚖️ Lazy Loading CrossEncoder...")
+        _cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+    return _cross_encoder
+
+
+def get_classifier():
+    global _classifier_model, _classifier_transforms, _classifier_weights
+    if _classifier_model is None:
+        print("🧪 Lazy Loading ResNet18...")
+        _classifier_weights = ResNet18_Weights.DEFAULT
+        _classifier_model = resnet18(weights=_classifier_weights)
+        _classifier_model.eval()
+        _classifier_transforms = _classifier_weights.transforms()
+    return _classifier_model, _classifier_transforms, _classifier_weights
+
+
+
 
 
 # DINOv2 Image Pre-processing (Standard ImageNet transforms)
@@ -152,7 +183,8 @@ def generate_image_embedding(image_path: str):
         with torch.no_grad():
             # DINOv2 returns a dictionary or tensor depending on version. 
             # We want the 'CLS' token or the raw output.
-            output = dinov2_model(img_tensor)
+            model = get_dinov2_model()
+            output = model(img_tensor)
         
         # 3. Flatten and Convert to List
         # Output shape is [1, 384] for vits14
@@ -171,7 +203,10 @@ def match_items(lost_items, found_items):
 
     for lost in lost_items:
         lost_desc = clean(lost.description)
+        text_model = get_text_model()
         lost_desc_emb = text_model.encode(lost_desc, convert_to_tensor=True)
+
+        
 
         for found in found_items:
             # -----------------------------
@@ -195,7 +230,9 @@ def match_items(lost_items, found_items):
             # 3. CROSS-ENCODER (DESCRIPTION ONLY)
             # -----------------------------
             pair = [lost_desc, found_desc]
-            logit = cross_encoder.predict(pair)
+            judge = get_cross_encoder()
+            logit = judge.predict(pair)
+
             desc_score = 1 / (1 + math.exp(-logit))
 
             if desc_score < 0.40:
@@ -318,7 +355,9 @@ def encode_image(image_obj):
         
         # 2. Forward Pass
         with torch.no_grad():
-            output = dinov2_model(image_tensor)
+            model = get_dinov2_model()
+            output = model(image_tensor)
+
         
         # Output is [1, 384] (for vits14). 
         # We return the Tensor directly for cosine calc.
@@ -434,23 +473,14 @@ def verify_exact_match(img_path1, img_path2):
 # 6. CATEGORY VALIDATION (REPLACEMENT FOR CLIP)
 # =========================================================
 
-# Load a tiny standard classifier (ResNet18) for category checking
-# This is independent of DINOv2. It just knows 1000 common objects.
-try:
-    classifier_weights = ResNet18_Weights.DEFAULT
-    classifier_model = resnet18(weights=classifier_weights)
-    classifier_model.eval()
-    classifier_transforms = classifier_weights.transforms()
-    print("✅ Loaded ResNet18 for Category Validation")
-except Exception as e:
-    print(f"⚠️ Could not load Classifier: {e}")
-    classifier_model = None
 
 def validate_image_content(image_path: str, user_category: str) -> tuple[bool, str]:
     """
     Validates that the image roughly matches the user's selected category.
     Uses ResNet18 (ImageNet) to predict the object class.
     """
+    classifier_model, classifier_transforms, classifier_weights = get_classifier()
+
     if not image_path or not user_category or classifier_model is None:
         return True, "Skipped"
 

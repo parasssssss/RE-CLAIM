@@ -3,6 +3,8 @@ from fastapi.staticfiles import StaticFiles
 from routes import auth_routes, item_routes, profile_routes, match_routes, admin_routes, onboarding_routes,user_routes,notification_routes,staff_routes,billing_routes,customer_routes,super_admin_routes
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 app=FastAPI(title="RE-CLAIM API")
 @app.get("/")
