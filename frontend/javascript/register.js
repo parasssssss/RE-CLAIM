@@ -297,8 +297,12 @@ class EnhancedRegistration {
             // Setup Timeout (30s)
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000);
+            const API_BASE =
+  window.location.hostname === "localhost"
+    ? "http://localhost:8000"
+    : "https://reclaim-backend-nqd4.onrender.com";
 
-            const res = await fetch('http://127.0.0.1:8000/auth/register', {
+            const res = await fetch(`${API_BASE}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
