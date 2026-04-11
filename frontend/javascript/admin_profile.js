@@ -1,4 +1,4 @@
-// ✅ IIFE to prevent variable conflicts
+//IIFE to prevent variable conflicts
 (() => {
     const token = localStorage.getItem("token");
 
